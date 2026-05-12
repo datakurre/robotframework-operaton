@@ -3,8 +3,6 @@ from typing import Any
 
 from keywords.base import java, except_interop_exception
 
-ClockUtil = java.type("org.operaton.bpm.engine.impl.util.ClockUtil")
-
 
 class TimerKeywords:
 
@@ -20,6 +18,7 @@ class TimerKeywords:
 
             Set Clock    2025-06-15T10:00:00
         """
+        ClockUtil = java.type("org.operaton.bpm.engine.impl.util.ClockUtil")
         SimpleDateFormat = java.type("java.text.SimpleDateFormat")
         sdf = SimpleDateFormat(pattern)
         date = sdf.parse(date_string)
@@ -34,6 +33,7 @@ class TimerKeywords:
 
             Advance Clock    3600000
         """
+        ClockUtil = java.type("org.operaton.bpm.engine.impl.util.ClockUtil")
         Calendar = java.type("java.util.Calendar")
         current = ClockUtil.getCurrentTime()
         cal = Calendar.getInstance()
@@ -50,6 +50,7 @@ class TimerKeywords:
 
             Reset Clock
         """
+        ClockUtil = java.type("org.operaton.bpm.engine.impl.util.ClockUtil")
         ClockUtil.reset()
 
     @keyword

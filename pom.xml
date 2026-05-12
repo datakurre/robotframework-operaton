@@ -203,6 +203,22 @@
     </profile>
     <profile>
       <id>shade</id>
+      <dependencies>
+        <!-- Engine core is test-scoped in default config; pull it into runtime
+             scope so the shade plugin bundles it into the fat JAR. -->
+        <dependency>
+          <groupId>org.operaton.bpm</groupId>
+          <artifactId>operaton-engine</artifactId>
+          <scope>runtime</scope>
+        </dependency>
+        <!-- assertj-core is declared test-scoped in the project; override to
+             runtime so shade includes it (needed by operaton-bpm-assert). -->
+        <dependency>
+          <groupId>org.assertj</groupId>
+          <artifactId>assertj-core</artifactId>
+          <scope>runtime</scope>
+        </dependency>
+      </dependencies>
       <build>
         <plugins>
           <plugin>
