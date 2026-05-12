@@ -9,4 +9,4 @@ target/
 tmp/
 devenv.local.nix
 devenv.local.yaml
-.devcontainer.json
+.devcontainer.jsondependency-reduced-pom.xml
