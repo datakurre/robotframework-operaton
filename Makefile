@@ -57,11 +57,19 @@ run-native:
 	./$(NATIVE_BIN) $(SUITE)
 
 # ─── Watch mode ──────────────────────────────────────────────────────────────
-# Watches for .robot/.bpmn/.dmn/.py changes and re-runs tests.
-#   make watch                  — run all tests on any change
-#   make watch SUITE=Example    — run only ExampleTest on change
+# Watches for .robot/.bpmn/.dmn/.py changes and re-runs on every save.
 #
-# Context recreation (mvn compile) only triggered on .py changes.
+#   make watch                             — Maven runner, all suites
+#   make watch SUITE=Example               — Maven runner, one suite (class-name prefix)
+#   make watch-shade                       — fat JAR runner, all suites
+#   make watch-shade SUITE=path/to.robot   — fat JAR runner, one suite
+#   make watch-native                      — native binary runner, all suites
+#   make watch-native SUITE=path/to.robot  — native binary runner, one suite
+#
+# .py changes:
+#   watch        → VFS rebuild via mvn process-resources, then re-run
+#   watch-shade  → fat JAR rebuild via mvn -Pshade package (~13s), then re-run
+#   watch-native → warning only; run 'make native' manually to bake .py changes in
 
 .PHONY: watch
 watch:
@@ -85,6 +93,50 @@ watch:
 	    echo ">>> Running: all tests"; \
 	    mvn -q test 2>&1 | tail -30; \
 	  fi; \
+	  echo "─────────────────────────────────────────────"; \
+	done
+
+.PHONY: watch-shade
+watch-shade:
+	@echo "Watching: $(WATCH_PATHS)"
+	@echo "Suite: $(or $(SUITE),src/test/resources/example)"
+	@echo "Runner: fat JAR  (.py changes trigger fat JAR rebuild, ~13s)"
+	@echo "Press Ctrl+C to stop."
+	@echo "─────────────────────────────────────────────"
+	@while true; do \
+	  CHANGED=$$(inotifywait -r -e modify,create --format '%f' \
+	    --include '\.(robot|bpmn|dmn|py)$$' $(WATCH_PATHS) 2>/dev/null); \
+	  echo ""; \
+	  echo ">>> Changed: $$CHANGED"; \
+	  if echo "$$CHANGED" | grep -q '\.py$$'; then \
+	    echo ">>> Python source changed — rebuilding fat JAR..."; \
+	    mvn -q -Pshade package -DskipTests; \
+	  fi; \
+	  echo ">>> Running: $(or $(SUITE),src/test/resources/example)"; \
+	  $(JAVA) -jar $(JAR_FAT) $(or $(SUITE),src/test/resources/example) 2>&1 | tail -20; \
+	  echo "─────────────────────────────────────────────"; \
+	done
+
+.PHONY: watch-native
+watch-native:
+	@echo "Watching: $(WATCH_PATHS)"
+	@echo "Suite: $(or $(SUITE),src/test/resources/example)"
+	@echo "Runner: native binary  (.py changes require 'make native' manually)"
+	@echo "Press Ctrl+C to stop."
+	@echo "─────────────────────────────────────────────"
+	@while true; do \
+	  CHANGED=$$(inotifywait -r -e modify,create --format '%f' \
+	    --include '\.(robot|bpmn|dmn|py)$$' $(WATCH_PATHS) 2>/dev/null); \
+	  echo ""; \
+	  echo ">>> Changed: $$CHANGED"; \
+	  if echo "$$CHANGED" | grep -q '\.py$$'; then \
+	    echo ">>> WARNING: Python source changed — native binary is NOT updated."; \
+	    echo ">>>          Run 'make native' to bake the changes in, then restart watch-native."; \
+	    echo "─────────────────────────────────────────────"; \
+	    continue; \
+	  fi; \
+	  echo ">>> Running: $(or $(SUITE),src/test/resources/example)"; \
+	  ./$(NATIVE_BIN) $(or $(SUITE),src/test/resources/example) 2>&1 | tail -20; \
 	  echo "─────────────────────────────────────────────"; \
 	done
 
