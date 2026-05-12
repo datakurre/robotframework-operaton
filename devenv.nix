@@ -11,6 +11,7 @@ let
         pkgs.prettier
         pkgs.treefmt
         pkgs.xmlformat
+        pkgs.black
       ];
 
       enterTest = ''
@@ -23,6 +24,10 @@ in
 
   languages.java.enable = true;
   languages.java.jdk.package = pkgs.jdk21;
+
+  languages.python.enable = true;
+  languages.python.venv.enable = true;
+  languages.python.venv.requirements = "robotframework-robocop";
 
   profiles.shell.module = {
     imports = [ shell ];
