@@ -23,7 +23,6 @@
             final.callPackage ./default.jar.nix {
               maven = prev.maven.override { inherit jdk_headless; };
               inherit jdk_headless;
-              inherit (prev) buildMavenRepositoryFromLockFile;
             };
           jre = prev.jdk21;
         };
@@ -33,7 +32,6 @@
         import nixpkgs {
           inherit system;
           overlays = [
-            mvn2nix.overlay
             operaton-robot-overlay
           ];
         }

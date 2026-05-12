@@ -28,9 +28,9 @@ import org.graalvm.python.embedding.GraalPyResources;
  * <p>Keeps one GraalPy context alive across multiple Robot Framework runs, avoiding JVM restart
  * overhead on every file change. The context is recreated only when a .py source file changes.
  *
- * <p>By prepending the real on-disk VFS source directory to sys.path (when available), ProcessEngine
- * and keyword modules are loaded from disk on each context creation — so .py edits are reflected
- * without rebuilding the fat JAR.
+ * <p>By prepending the real on-disk VFS source directory to sys.path (when available),
+ * ProcessEngine and keyword modules are loaded from disk on each context creation — so .py edits
+ * are reflected without rebuilding the fat JAR.
  *
  * <p>Usage (via Robot.main --watch):
  *
@@ -44,8 +44,7 @@ public class RobotWatch {
 
   // Relative path to VFS Python sources; prepended to sys.path so on-disk edits are picked up
   // without a fat JAR rebuild when running in watch mode from the project directory.
-  static final String DEFAULT_VFS_SRC =
-      "src/main/resources/org.graalvm.python.vfs/src";
+  static final String DEFAULT_VFS_SRC = "src/main/resources/org.graalvm.python.vfs/src";
 
   // Extensions that require only a re-run (no context recreation)
   private static final List<String> RERUN_EXTS = Arrays.asList(".robot", ".bpmn", ".dmn");

@@ -12,3 +12,4 @@ output.xml
 report.html
 target/
 tmp/
+/result

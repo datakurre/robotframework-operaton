@@ -72,6 +72,61 @@ The first build downloads Robot Framework into the GraalPy virtual filesystem
 
 ---
 
+## Running with `nix run`
+
+The Nix flake exposes the fat JAR as a runnable app. No devenv shell or Maven
+required — Nix fetches everything from the binary cache.
+
+```sh
+# Run a single Robot suite (output written to the current directory):
+nix run github:operaton/operaton-robot -- src/test/resources/example/Example.robot
+
+# Run all suites in a directory:
+nix run github:operaton/operaton-robot -- src/test/resources/example
+
+# Pass Robot Framework options:
+nix run github:operaton/operaton-robot -- \
+    --outputdir /tmp/results \
+    --loglevel DEBUG \
+    src/test/resources/example/Example.robot
+
+# Watch mode — rerun on every .robot/.bpmn/.dmn/.py change:
+nix run github:operaton/operaton-robot -- --watch src/test/resources/example
+
+# Watch mode with explicit Python source directory
+# (picks up .py edits live without rebuilding):
+nix run github:operaton/operaton-robot -- \
+    --watch src/test/resources/example \
+    --py-src src/main/resources/org.graalvm.python.vfs/src
+```
+
+When working inside a checkout, replace `github:operaton/operaton-robot` with `.`:
+
+```sh
+nix run . -- src/test/resources/example/Example.robot
+nix run . -- --watch src/test/resources/example
+```
+
+`JAVA_OPTS` is forwarded to the JVM:
+
+```sh
+JAVA_OPTS="-Xmx2g" nix run . -- src/test/resources/example/Example.robot
+```
+
+### Watch mode details
+
+`--watch` keeps one GraalPy context alive across runs, so re-runs after
+`.robot`/`.bpmn`/`.dmn` changes take roughly 1 second. On `.py` changes the
+context is recreated (~2-3 s) and the updated sources are loaded from disk
+when `--py-src` points at the on-disk VFS source directory.
+
+| Flag | Default | Description |
+|---|---|---|
+| `--watch [path]` | `src/test/resources/example` | Suite file or directory to watch and run |
+| `--py-src <dir>` | auto-detected if `src/main/resources/org.graalvm.python.vfs/src` exists | Load Python keywords from disk instead of VFS |
+
+---
+
 ## Keyword overview
 
 The `ProcessEngine` library exposes ~44 keywords. The most common ones:
@@ -105,6 +160,9 @@ To enable verbose engine output, pass Robot Framework's standard
 flag and promotes the Java log level to `INFO`:
 
 ```sh
+# Via nix run
+nix run . -- --loglevel DEBUG src/test/resources/example/Example.robot
+
 # Via Maven runner
 devenv shell --no-eval-cache -- make robot SUITE=src/test/resources/example/Example.robot -- --loglevel DEBUG
 

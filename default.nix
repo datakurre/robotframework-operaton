@@ -19,7 +19,7 @@ stdenv.mkDerivation {
     cat << EOF > $out/bin/${call-name}
 #!/usr/bin/env bash
 
-exec ${jre}/bin/java \$JAVA_OPTS "\$@" -jar ${jar}
+exec ${jre}/bin/java \$JAVA_OPTS -jar ${jar} "\$@"
 EOF
     chmod u+x $out/bin/${call-name}
   '';
