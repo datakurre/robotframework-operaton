@@ -9,8 +9,8 @@ import org.junit.jupiter.api.io.TempDir;
 /**
  * Integration test for the Operaton Robot Framework keyword library.
  *
- * <p>Verifies that the Operaton library can set up and tear down an Operaton engine, deploy
- * BPMN resources, start process instances, and assert task state — all via Robot Framework keywords
+ * <p>Verifies that the Operaton library can set up and tear down an Operaton engine, deploy BPMN
+ * resources, start process instances, and assert task state — all via Robot Framework keywords
  * executed through GraalPy.
  */
 class OperatonKeywordTest {

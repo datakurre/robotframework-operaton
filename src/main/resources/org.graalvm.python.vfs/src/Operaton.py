@@ -14,6 +14,7 @@ from keywords.dmn_keywords import DmnKeywords
 from keywords.typed_variables import TypedVariables
 from keywords.timer_keywords import TimerKeywords
 from keywords.external_task_keywords import ExternalTaskKeywords
+from keywords.bpmn_keywords import BpmnKeywords
 
 try:
     import java  # pyright: ignore
@@ -45,6 +46,7 @@ class Operaton(DynamicCore):
             TypedVariables(self),
             TimerKeywords(self),
             ExternalTaskKeywords(self),
+            BpmnKeywords(self),
         ]
         DynamicCore.__init__(self, components)
 

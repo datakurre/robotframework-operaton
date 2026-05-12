@@ -9,8 +9,8 @@ import org.junit.jupiter.api.io.TempDir;
 /**
  * Tests for the variable bridge between Robot Framework and Operaton process variables.
  *
- * <p>Verifies that process variables can be set and read back through the Operaton Robot
- * Framework keyword library, ensuring correct round-trip serialization between Python and Java.
+ * <p>Verifies that process variables can be set and read back through the Operaton Robot Framework
+ * keyword library, ensuring correct round-trip serialization between Python and Java.
  */
 class VariableBridgeTest {
 

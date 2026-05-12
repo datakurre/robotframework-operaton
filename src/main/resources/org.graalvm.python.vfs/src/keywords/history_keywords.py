@@ -3,6 +3,14 @@ from typing import Any
 
 from keywords.base import except_interop_exception
 
+try:
+    import java  # pyright: ignore
+except ImportError:
+    class java:
+        @staticmethod
+        def type(klass: str) -> Any:
+            pass
+
 
 class HistoryKeywords:
 

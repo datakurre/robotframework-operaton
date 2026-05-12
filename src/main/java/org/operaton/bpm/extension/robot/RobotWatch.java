@@ -28,9 +28,9 @@ import org.graalvm.python.embedding.GraalPyResources;
  * <p>Keeps one GraalPy context alive across multiple Robot Framework runs, avoiding JVM restart
  * overhead on every file change. The context is recreated only when a .py source file changes.
  *
- * <p>By prepending the real on-disk VFS source directory to sys.path (when available),
- * Operaton and keyword modules are loaded from disk on each context creation — so .py edits
- * are reflected without rebuilding the fat JAR.
+ * <p>By prepending the real on-disk VFS source directory to sys.path (when available), Operaton and
+ * keyword modules are loaded from disk on each context creation — so .py edits are reflected
+ * without rebuilding the fat JAR.
  *
  * <p>Usage (via Robot.main --watch):
  *
