@@ -6,12 +6,12 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.python.embedding.GraalPyResources;
 
-/** Generates Robot Framework keyword documentation for ProcessEngine via {@code robot.libdoc}. */
+/** Generates Robot Framework keyword documentation for Operaton via {@code robot.libdoc}. */
 public class Libdoc {
   private static final String PYTHON = "python";
 
   public static void main(String[] args) {
-    String output = args.length > 0 ? args[0] : "docs/ProcessEngine.html";
+    String output = args.length > 0 ? args[0] : "docs/Operaton.html";
     try (Context context =
         GraalPyResources.contextBuilder()
             .allowAllAccess(true)
@@ -25,7 +25,7 @@ public class Libdoc {
                     PYTHON,
                     """
                     from robot.libdoc import libdoc
-                    libdoc("ProcessEngine", output)
+                    libdoc("Operaton", output)
                     """,
                     "<internal>")
                 .build();

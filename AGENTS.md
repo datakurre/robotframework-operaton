@@ -22,7 +22,7 @@ Guidance for coding agents working in this repository.
 └──────────┬─────────────┘
            ▼
 ┌────────────────────────┐
-│ ProcessEngine.py       │  @library keyword class
+│ Operaton.py            │  @library keyword class
 │ (44 keywords)          │  uses java.type(...) to call
 └──────────┬─────────────┘  Operaton's Java API directly
            ▼
@@ -39,7 +39,7 @@ Tests are driven by JUnit 5: each `*Test.java` calls `RobotCliTest.runRobot(...)
 |---|---|
 | [pom.xml](pom.xml) | Single-module Maven build; flattened properties; `native` profile. |
 | [src/main/java/org/operaton/bpm/extension/robot/Robot.java](src/main/java/org/operaton/bpm/extension/robot/Robot.java) | CLI entry point (forwards args to `robot.run.run_cli`). |
-| [src/main/resources/org.graalvm.python.vfs/src/ProcessEngine.py](src/main/resources/org.graalvm.python.vfs/src/ProcessEngine.py) | The keyword library. **Add new keywords here.** |
+| [src/main/resources/org.graalvm.python.vfs/src/Operaton.py](src/main/resources/org.graalvm.python.vfs/src/Operaton.py) | The keyword library. **Add new keywords here.** |
 | [src/test/java/org/operaton/bpm/extension/robot/RobotCliTest.java](src/test/java/org/operaton/bpm/extension/robot/RobotCliTest.java) | Shared `runRobot(outputDir, suitePath)` helper + smoke tests. |
 | `src/test/java/.../*Test.java` | One JUnit class per feature; each invokes a same-named `.robot` suite. |
 | [src/test/resources/example/](src/test/resources/example/) | Robot suites + BPMN + DMN fixtures. |
@@ -64,7 +64,7 @@ The first build downloads Robot Framework 7.1.1 into the GraalPy VFS via `graalp
 
 ### Adding a new keyword
 
-1. Add a `@keyword`-decorated method to `ProcessEngine` in `src/main/resources/org.graalvm.python.vfs/src/ProcessEngine.py`. Decorate with `@except_interop_exception` so Java exceptions become readable Robot failures (including a truncated Java stack trace).
+1. Add a `@keyword`-decorated method to `Operaton` in `src/main/resources/org.graalvm.python.vfs/src/Operaton.py`. Decorate with `@except_interop_exception` so Java exceptions become readable Robot failures (including a truncated Java stack trace).
 2. Use `java.type("fully.qualified.JavaClass")` to access Operaton APIs. Resolve singletons at module level when they are stable.
 3. Argument names map to Robot's snake-case → space form (e.g. `start_instance` → `Start Instance`).
 

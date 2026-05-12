@@ -138,7 +138,7 @@ format:
 docs:
 	mkdir -p docs
 	mvn -q -DskipTests package
-	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Libdoc docs/ProcessEngine.html"
+	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Libdoc docs/Operaton.html"
 
 .PHONY: shell
 shell:

@@ -37,7 +37,7 @@ instance and asserts a user task is waiting:
 
 ```robot
 *** Settings ***
-Library    ProcessEngine
+Library    Operaton
 
 *** Test Cases ***
 First Run
@@ -129,7 +129,7 @@ when `--py-src` points at the on-disk VFS source directory.
 
 ## Keyword overview
 
-The `ProcessEngine` library exposes ~44 keywords. The most common ones:
+The `Operaton` library exposes ~44 keywords. The most common ones:
 
 | Group | Keywords |
 |---|---|
@@ -145,7 +145,7 @@ The `ProcessEngine` library exposes ~44 keywords. The most common ones:
 | Clock / timers | `Set Clock`, `Advance Clock`, `Reset Clock`, `Execute Timer Jobs` |
 | History | `Get Completed Instances`, `Get Historic Variables` |
 
-The full library source is [src/main/resources/org.graalvm.python.vfs/src/ProcessEngine.py](src/main/resources/org.graalvm.python.vfs/src/ProcessEngine.py).
+The full library source is [src/main/resources/org.graalvm.python.vfs/src/Operaton.py](src/main/resources/org.graalvm.python.vfs/src/Operaton.py).
 
 ---
 

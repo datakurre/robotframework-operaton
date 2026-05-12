@@ -31,7 +31,7 @@ assertThat: Any = (
     getattr(java.type("org.operaton.bpm.engine.test.assertions.bpmn.BpmnAwareTests"), "assertThat", None))
 
 
-class ProcessEngine(DynamicCore):
+class Operaton(DynamicCore):
     ROBOT_LIBRARY_SCOPE = "GLOBAL"
 
     engine: Any = None

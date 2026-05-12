@@ -7,9 +7,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * Integration test for the DMN-related Robot Framework keywords in the ProcessEngine library.
+ * Integration test for the DMN-related Robot Framework keywords in the Operaton library.
  *
- * <p>Verifies that the ProcessEngine library can deploy DMN decision definitions, evaluate decision
+ * <p>Verifies that the Operaton library can deploy DMN decision definitions, evaluate decision
  * tables with input variables, and assert decision results — all via Robot Framework keywords
  * executed through GraalPy.
  */
