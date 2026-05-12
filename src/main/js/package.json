@@ -1,0 +1,17 @@
+{
+  "name": "bpmn-render",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node esbuild.config.mjs",
+    "spike": "node src/spike.mjs"
+  },
+  "dependencies": {
+    "bpmn-js": "^17.11.1",
+    "linkedom": "^0.18.9"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}

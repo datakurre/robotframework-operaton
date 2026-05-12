@@ -1,0 +1,93 @@
+import json
+
+from robot.api import logger
+from robot.api.deco import keyword
+from typing import Any
+
+from keywords.base import except_interop_exception
+
+try:
+    import java  # pyright: ignore
+except ImportError:
+    class java:
+        @staticmethod
+        def type(klass: str) -> Any:
+            pass
+
+
+class BpmnKeywords:
+
+    def __init__(self, ctx: Any):
+        self.ctx = ctx
+
+    @keyword
+    @except_interop_exception
+    def log_bpmn_execution(self, process_instance_id: str):
+        """Renders the executed BPMN path as SVG and logs it to the Robot log.
+
+        Fetches BPMN XML and activity history from the engine, then delegates to
+        the bundled ``bpmn-render.js`` script (invoked via ``node``).
+
+        Requires Node.js 18+ on PATH. If ``node`` is unavailable, logs a warning
+        and returns without failing.
+        """
+        assert self.ctx.engine, "No engine"
+
+        BpmnRenderer = java.type(
+            "org.operaton.bpm.extension.robot.BpmnRenderer"
+        )
+        if not BpmnRenderer.isNodeAvailable():
+            logger.warn(
+                f"BPMN rendering skipped: 'node' not found on PATH "
+                f"(process instance: {process_instance_id})"
+            )
+            return
+
+        history = self.ctx.engine.getHistoryService()
+        instance = (
+            history.createHistoricProcessInstanceQuery()
+            .processInstanceId(process_instance_id)
+            .singleResult()
+        )
+        assert instance is not None, (
+            f"Process instance '{process_instance_id}' not found in history"
+        )
+        process_def_id = str(instance.getProcessDefinitionId())
+
+        # Fetch BPMN XML via RepositoryService
+        repository = self.ctx.engine.getRepositoryService()
+        stream = repository.getProcessModel(process_def_id)
+        Scanner = java.type("java.util.Scanner")
+        scanner = Scanner(stream, "UTF-8").useDelimiter("\\A")
+        bpmn_xml = str(scanner.next()) if scanner.hasNext() else ""
+        scanner.close()
+
+        # Fetch activity history
+        activities_raw = (
+            history.createHistoricActivityInstanceQuery()
+            .processInstanceId(process_instance_id)
+            .orderByHistoricActivityInstanceStartTime()
+            .asc()
+            .list()
+        )
+        activities = []
+        for i in range(int(activities_raw.size())):
+            act = activities_raw.get(i)
+            activities.append({
+                "activityId": str(act.getActivityId()),
+                "activityType": str(act.getActivityType()),
+                "canceled": bool(act.isCanceled()),
+                "completed": act.getEndTime() is not None,
+            })
+
+        input_json = json.dumps({"bpmn": bpmn_xml, "activities": activities})
+
+        try:
+            svg = str(BpmnRenderer.renderSvg(input_json))
+            logger.info(
+                f'<div class="bpmn-execution" '
+                f'style="max-width:100%;overflow:auto">{svg}</div>',
+                html=True,
+            )
+        except Exception as exc:
+            logger.warn(f"BPMN rendering failed: {exc}")

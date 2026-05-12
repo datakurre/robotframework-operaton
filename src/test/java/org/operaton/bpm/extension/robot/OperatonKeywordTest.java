@@ -7,16 +7,16 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * Integration test for the ProcessEngine Robot Framework keyword library.
+ * Integration test for the Operaton Robot Framework keyword library.
  *
- * <p>Verifies that the ProcessEngine library can set up and tear down an Operaton engine, deploy
- * BPMN resources, start process instances, and assert task state — all via Robot Framework keywords
+ * <p>Verifies that the Operaton library can set up and tear down an Operaton engine, deploy BPMN
+ * resources, start process instances, and assert task state — all via Robot Framework keywords
  * executed through GraalPy.
  */
-class ProcessEngineKeywordTest {
+class OperatonKeywordTest {
 
   @Test
-  void processEngineKeywordsWorkEndToEnd(@TempDir Path outputDir) throws Exception {
+  void operatonKeywordsWorkEndToEnd(@TempDir Path outputDir) throws Exception {
     // The Example.robot suite exercises: Setup Process Engine, Deploy Resources,
     // Start Instance, Should Have Task, Teardown Process Engine
     String suitePath =
@@ -27,7 +27,7 @@ class ProcessEngineKeywordTest {
   }
 
   @Test
-  void processEngineKeywordsWithCompleteTask(@TempDir Path outputDir) throws Exception {
+  void operatonKeywordsWithCompleteTask(@TempDir Path outputDir) throws Exception {
     String suitePath =
         Path.of("src", "test", "resources", "example", "CompleteTask.robot")
             .toAbsolutePath()

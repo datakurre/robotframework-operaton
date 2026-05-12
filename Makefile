@@ -5,6 +5,8 @@ JAR_FAT := target/operaton-bpm-extension-robot-1.0-SNAPSHOT-fat.jar
 NATIVE_BIN := target/operaton-bpm-extension-robot
 WATCH_PATHS := src/test/resources/example src/main/resources/org.graalvm.python.vfs/src
 VFS_SRC := src/main/resources/org.graalvm.python.vfs/src
+BPMN_RENDER_JS := src/main/resources/bpmn-render.js
+JS_SOURCES := src/main/js/src/render.mjs src/main/js/package.json
 
 .PHONY: all
 all: build
@@ -27,15 +29,60 @@ native:
 clean:
 	mvn clean
 
+# ─── JS bundle ───────────────────────────────────────────────────────────────
+# Rebuild the bpmn-render.js bundle from source (requires node + npm on PATH).
+# The built file is committed to the repo so callers don't need node at build time.
+
+.PHONY: bpmn-render
+bpmn-render: $(BPMN_RENDER_JS)
+
+$(BPMN_RENDER_JS): $(JS_SOURCES)
+	cd src/main/js && npm install && node esbuild.config.mjs
+
 # ─── Test targets ────────────────────────────────────────────────────────────
 
+# In a Nix/devenv shell: extract pre-built GraalPy VFS (venv + home) from the
+# Nix-built fat JAR into target/classes/ before running tests.  The resources
+# plugin only copies src/main/resources/ and does NOT delete extra files in
+# target/classes/, so the extracted venv survives the process-resources phase.
+.PHONY: _nix-venv-bootstrap
+_nix-venv-bootstrap:
+	@NIX_JAR=$$(grep -o '/nix/store/[^ ]*\.jar' result/bin/operaton-robot 2>/dev/null); \
+	if [ -z "$$NIX_JAR" ]; then \
+	  echo "ERROR: Nix-built JAR not found. Run 'nix build' first."; exit 1; \
+	fi; \
+	echo "Extracting GraalPy VFS from $$NIX_JAR ..."; \
+	mkdir -p target/classes; \
+	(cd target/classes && jar xf "$$NIX_JAR" \
+	  org.graalvm.python.vfs/venv \
+	  org.graalvm.python.vfs/home \
+	  org.graalvm.python.vfs/fileslist.txt); \
+	echo "Patching fileslist.txt for current src/ tree ..."; \
+	LIST=target/classes/org.graalvm.python.vfs/fileslist.txt; \
+	(cd src/main/resources && \
+	  find org.graalvm.python.vfs/src -mindepth 1 | LC_ALL=C sort | while read p; do \
+	    if [ -d "$$p" ]; then echo "/$$p/"; else echo "/$$p"; fi; \
+	  done) | while read entry; do \
+	    grep -qxF "$$entry" "$$LIST" || echo "$$entry" >> "$$LIST"; \
+	done
+
 .PHONY: test
+ifdef IN_NIX_SHELL
+test: _nix-venv-bootstrap
+	mvn -Pnix test
+else
 test:
 	mvn test
+endif
 
 .PHONY: check
+ifdef IN_NIX_SHELL
+check: _nix-venv-bootstrap
+	mvn -Pnix verify
+else
 check:
 	mvn verify
+endif
 
 # ─── Run targets ─────────────────────────────────────────────────────────────
 # SUITE: path to .robot file (for run/run-shade/run-native/robot)
@@ -138,7 +185,7 @@ format:
 docs:
 	mkdir -p docs
 	mvn -q -DskipTests package
-	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Libdoc docs/ProcessEngine.html"
+	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Libdoc docs/Operaton.html"
 
 .PHONY: shell
 shell:

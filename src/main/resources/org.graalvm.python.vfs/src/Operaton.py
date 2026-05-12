@@ -14,6 +14,7 @@ from keywords.dmn_keywords import DmnKeywords
 from keywords.typed_variables import TypedVariables
 from keywords.timer_keywords import TimerKeywords
 from keywords.external_task_keywords import ExternalTaskKeywords
+from keywords.bpmn_keywords import BpmnKeywords
 
 try:
     import java  # pyright: ignore
@@ -31,7 +32,7 @@ assertThat: Any = (
     getattr(java.type("org.operaton.bpm.engine.test.assertions.bpmn.BpmnAwareTests"), "assertThat", None))
 
 
-class ProcessEngine(DynamicCore):
+class Operaton(DynamicCore):
     ROBOT_LIBRARY_SCOPE = "GLOBAL"
 
     engine: Any = None
@@ -45,6 +46,7 @@ class ProcessEngine(DynamicCore):
             TypedVariables(self),
             TimerKeywords(self),
             ExternalTaskKeywords(self),
+            BpmnKeywords(self),
         ]
         DynamicCore.__init__(self, components)
 
