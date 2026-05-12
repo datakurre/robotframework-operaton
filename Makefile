@@ -1,39 +1,37 @@
 JAVA := $(shell which java)
+JAVA_FILES := $(shell find . -name "*.java" -path "*/src/*" -not -path "./tmp/*" -type f)
 
 .PHONY: all
 all: build
 
 .PHONY: build
 build:
+	mvn package -DskipTests
+
+.PHONY: test
+test:
+	mvn test
+
+.PHONY: check
+check:
+	mvn verify
+
+.PHONY: format
+format:
+	google-java-format -i $(JAVA_FILES)
+
+.PHONY: clean
+clean:
+	mvn clean
+
+.PHONY: native
+native:
 	mvn -Pnative package
 
 .PHONY: robot
 robot:
-	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Robot ${SUITE}"
-
-src/main/resources/META-INF/native-image/org.operaton.bpm.extension.robot/operaton-bpm-extension-robot/reachability-metadata.json:
-	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.args="-agentlib:native-image-agent=config-output-dir=$(PWD)/src/main/resources/META-INF/native-image/org.operaton.bpm.extension.robot/operaton-bpm-extension-robot -cp %classpath org.operaton.bpm.extension.robot.Robot $(PWD)/example"
-
-trace-output.json:
-	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.args="-agentlib:native-image-agent=trace-output=$(PWD)/trace-file.json -cp %classpath org.operaton.bpm.extension.robot.Robot $(PWD)/example"
-
-.PHONY: clean
-clean:
-	$(RM) src/main/resources/META-INF/native-image/org.operaton.bpm.extension.robot/operaton-bpm-extension-robot/reachability-metadata.json
+	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Robot ${SUITE}"
 
 .PHONY: shell
 shell:
-	nix develop
-
-# native-image-configure generate --trace-input=/path/to/trace-file.json --output-dir=/path/to/config-dir/
-# { "rules": [
-#    {"excludeClasses": "com.oracle.svm.**"},
-#    {"includeClasses": "com.oracle.svm.tutorial.*"},
-#   {"excludeClasses": "com.oracle.svm.tutorial.HostedHelper"}
-#  ],
-#  "regexRules": [
-#    {"includeClasses": ".*"},
-#    {"excludeClasses": ".*\\$\\$Generated[0-9]+"}
-#   ]
-# }
-
+	devenv shell

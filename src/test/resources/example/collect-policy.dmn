@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/"
+             xmlns:camunda="http://camunda.org/schema/1.0/dmn"
+             id="Definitions_benefits"
+             name="Benefits Decision"
+             namespace="http://camunda.org/schema/1.0/dmn">
+
+  <decision id="benefits" name="Benefits" camunda:historyTimeToLive="180">
+    <decisionTable id="DT_benefits" hitPolicy="COLLECT">
+      <input id="Input_customerType" label="Customer Type">
+        <inputExpression id="IE_customerType" typeRef="string">
+          <text>customerType</text>
+        </inputExpression>
+      </input>
+      <input id="Input_orderTotal" label="Order Total">
+        <inputExpression id="IE_orderTotal" typeRef="integer">
+          <text>orderTotal</text>
+        </inputExpression>
+      </input>
+      <output id="Output_benefit" label="Benefit" name="benefit" typeRef="string" />
+      <rule id="Rule_gold_shipping">
+        <inputEntry id="IE_gold_shipping_type"><text>"gold"</text></inputEntry>
+        <inputEntry id="IE_gold_shipping_total"><text></text></inputEntry>
+        <outputEntry id="OE_gold_shipping"><text>"free-shipping"</text></outputEntry>
+      </rule>
+      <rule id="Rule_high_order">
+        <inputEntry id="IE_high_order_type"><text></text></inputEntry>
+        <inputEntry id="IE_high_order_total"><text>&gt;= 1000</text></inputEntry>
+        <outputEntry id="OE_high_order"><text>"bonus-points"</text></outputEntry>
+      </rule>
+      <rule id="Rule_gold_high">
+        <inputEntry id="IE_gold_high_type"><text>"gold"</text></inputEntry>
+        <inputEntry id="IE_gold_high_total"><text>&gt;= 1000</text></inputEntry>
+        <outputEntry id="OE_gold_high"><text>"gift"</text></outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+</definitions>

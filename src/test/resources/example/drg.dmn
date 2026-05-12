@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/"
+             xmlns:camunda="http://camunda.org/schema/1.0/dmn"
+             id="Definitions_drg"
+             name="DRG Decision"
+             namespace="http://camunda.org/schema/1.0/dmn">
+
+  <decision id="customerTier" name="Customer Tier" camunda:historyTimeToLive="180">
+    <decisionTable id="DT_customerTier" hitPolicy="FIRST">
+      <input id="Input_ct" label="Customer Type">
+        <inputExpression id="IE_ct" typeRef="string">
+          <text>customerType</text>
+        </inputExpression>
+      </input>
+      <output id="Output_tier" label="Tier" name="tier" typeRef="string" />
+      <rule id="Rule_ct_gold">
+        <inputEntry id="IE_ct_gold"><text>"gold"</text></inputEntry>
+        <outputEntry id="OE_ct_gold"><text>"premium"</text></outputEntry>
+      </rule>
+      <rule id="Rule_ct_silver">
+        <inputEntry id="IE_ct_silver"><text>"silver"</text></inputEntry>
+        <outputEntry id="OE_ct_silver"><text>"standard"</text></outputEntry>
+      </rule>
+      <rule id="Rule_ct_default">
+        <inputEntry id="IE_ct_default"><text></text></inputEntry>
+        <outputEntry id="OE_ct_default"><text>"basic"</text></outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+
+  <decision id="tierDiscount" name="Tier Discount" camunda:historyTimeToLive="180">
+    <informationRequirement id="IR_tier">
+      <requiredDecision href="#customerTier" />
+    </informationRequirement>
+    <decisionTable id="DT_tierDiscount" hitPolicy="FIRST">
+      <input id="Input_tier" label="Tier">
+        <inputExpression id="IE_tier" typeRef="string">
+          <text>tier</text>
+        </inputExpression>
+      </input>
+      <output id="Output_discount" label="Discount Percent" name="discountPercent" typeRef="integer" />
+      <rule id="Rule_td_premium">
+        <inputEntry id="IE_td_premium"><text>"premium"</text></inputEntry>
+        <outputEntry id="OE_td_premium"><text>20</text></outputEntry>
+      </rule>
+      <rule id="Rule_td_standard">
+        <inputEntry id="IE_td_standard"><text>"standard"</text></inputEntry>
+        <outputEntry id="OE_td_standard"><text>10</text></outputEntry>
+      </rule>
+      <rule id="Rule_td_basic">
+        <inputEntry id="IE_td_basic"><text>"basic"</text></inputEntry>
+        <outputEntry id="OE_td_basic"><text>0</text></outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+</definitions>

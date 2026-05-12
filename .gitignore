@@ -1,7 +1,12 @@
 .idea/
+.devenv/
 .vscode/
 __pycache__/
 log.html
 output.xml
 report.html
 target/
+tmp/
+devenv.local.nix
+devenv.local.yaml
+.devcontainer.json

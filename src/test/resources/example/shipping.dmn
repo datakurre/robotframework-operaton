@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/"
+             xmlns:camunda="http://camunda.org/schema/1.0/dmn"
+             id="Definitions_shipping"
+             name="Shipping Decision"
+             namespace="http://camunda.org/schema/1.0/dmn">
+
+  <decision id="shipping" name="Shipping" camunda:historyTimeToLive="180">
+    <decisionTable id="DT_shipping" hitPolicy="FIRST">
+      <input id="Input_customerType" label="Customer Type">
+        <inputExpression id="IE_customerType" typeRef="string">
+          <text>customerType</text>
+        </inputExpression>
+      </input>
+      <input id="Input_orderTotal" label="Order Total">
+        <inputExpression id="IE_orderTotal" typeRef="integer">
+          <text>orderTotal</text>
+        </inputExpression>
+      </input>
+      <output id="Output_discount" label="Discount Percent" name="discountPercent" typeRef="integer" />
+      <output id="Output_shipping" label="Shipping Method" name="shippingMethod" typeRef="string" />
+      <rule id="Rule_gold_high">
+        <inputEntry id="IE_gold_high_type"><text>"gold"</text></inputEntry>
+        <inputEntry id="IE_gold_high_total"><text>&gt;= 1000</text></inputEntry>
+        <outputEntry id="OE_gold_high_discount"><text>15</text></outputEntry>
+        <outputEntry id="OE_gold_high_shipping"><text>"express"</text></outputEntry>
+      </rule>
+      <rule id="Rule_gold">
+        <inputEntry id="IE_gold_type"><text>"gold"</text></inputEntry>
+        <inputEntry id="IE_gold_total"><text></text></inputEntry>
+        <outputEntry id="OE_gold_discount"><text>10</text></outputEntry>
+        <outputEntry id="OE_gold_shipping"><text>"standard"</text></outputEntry>
+      </rule>
+      <rule id="Rule_silver_high">
+        <inputEntry id="IE_silver_high_type"><text>"silver"</text></inputEntry>
+        <inputEntry id="IE_silver_high_total"><text>&gt;= 1000</text></inputEntry>
+        <outputEntry id="OE_silver_high_discount"><text>10</text></outputEntry>
+        <outputEntry id="OE_silver_high_shipping"><text>"express"</text></outputEntry>
+      </rule>
+      <rule id="Rule_silver">
+        <inputEntry id="IE_silver_type"><text>"silver"</text></inputEntry>
+        <inputEntry id="IE_silver_total"><text></text></inputEntry>
+        <outputEntry id="OE_silver_discount"><text>5</text></outputEntry>
+        <outputEntry id="OE_silver_shipping"><text>"standard"</text></outputEntry>
+      </rule>
+      <rule id="Rule_default">
+        <inputEntry id="IE_default_type"><text></text></inputEntry>
+        <inputEntry id="IE_default_total"><text></text></inputEntry>
+        <outputEntry id="OE_default_discount"><text>0</text></outputEntry>
+        <outputEntry id="OE_default_shipping"><text>"standard"</text></outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+</definitions>

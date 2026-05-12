@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/"
+             xmlns:camunda="http://camunda.org/schema/1.0/dmn"
+             id="Definitions_approval"
+             name="Approval Decision"
+             namespace="http://camunda.org/schema/1.0/dmn">
+
+  <decision id="approval" name="Approval" camunda:historyTimeToLive="180">
+    <decisionTable id="DT_approval" hitPolicy="ANY">
+      <input id="Input_catA" label="Category A">
+        <inputExpression id="IE_catA" typeRef="string">
+          <text>categoryA</text>
+        </inputExpression>
+      </input>
+      <input id="Input_catB" label="Category B">
+        <inputExpression id="IE_catB" typeRef="string">
+          <text>categoryB</text>
+        </inputExpression>
+      </input>
+      <output id="Output_result" label="Result" name="result" typeRef="string" />
+      <rule id="Rule_catA">
+        <inputEntry id="IE_catA_yes"><text>"yes"</text></inputEntry>
+        <inputEntry id="IE_catA_any"><text></text></inputEntry>
+        <outputEntry id="OE_catA"><text>"approved"</text></outputEntry>
+      </rule>
+      <rule id="Rule_catB">
+        <inputEntry id="IE_catB_any"><text></text></inputEntry>
+        <inputEntry id="IE_catB_yes"><text>"yes"</text></inputEntry>
+        <outputEntry id="OE_catB"><text>"approved"</text></outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+</definitions>

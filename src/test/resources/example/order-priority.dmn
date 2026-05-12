@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/"
+             xmlns:camunda="http://camunda.org/schema/1.0/dmn"
+             id="Definitions_orderPriority"
+             name="Order Priority Decision"
+             namespace="http://camunda.org/schema/1.0/dmn">
+
+  <decision id="orderPriority" name="Order Priority" camunda:historyTimeToLive="180">
+    <decisionTable id="DT_orderPriority" hitPolicy="FIRST">
+      <input id="Input_orderTotal" label="Order Total">
+        <inputExpression id="IE_orderTotal" typeRef="integer">
+          <text>orderTotal</text>
+        </inputExpression>
+      </input>
+      <output id="Output_priority" label="Priority" name="priority" typeRef="string" />
+      <rule id="Rule_high">
+        <inputEntry id="IE_high"><text>&gt;= 1000</text></inputEntry>
+        <outputEntry id="OE_high"><text>"high"</text></outputEntry>
+      </rule>
+      <rule id="Rule_medium">
+        <inputEntry id="IE_medium"><text>&gt;= 500</text></inputEntry>
+        <outputEntry id="OE_medium"><text>"medium"</text></outputEntry>
+      </rule>
+      <rule id="Rule_low">
+        <inputEntry id="IE_low"><text></text></inputEntry>
+        <outputEntry id="OE_low"><text>"low"</text></outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+</definitions>

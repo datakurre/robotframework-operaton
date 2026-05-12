@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/"
+             xmlns:camunda="http://camunda.org/schema/1.0/dmn"
+             id="Definitions_gradeLabel"
+             name="Grade Label Decision"
+             namespace="http://camunda.org/schema/1.0/dmn">
+
+  <decision id="gradeLabel" name="Grade Label" camunda:historyTimeToLive="180">
+    <decisionTable id="DT_gradeLabel" hitPolicy="UNIQUE">
+      <input id="Input_grade" label="Grade">
+        <inputExpression id="IE_grade" typeRef="string">
+          <text>grade</text>
+        </inputExpression>
+      </input>
+      <output id="Output_label" label="Label" name="label" typeRef="string" />
+      <rule id="Rule_A">
+        <inputEntry id="IE_A"><text>"A"</text></inputEntry>
+        <outputEntry id="OE_A"><text>"Excellent"</text></outputEntry>
+      </rule>
+      <rule id="Rule_B">
+        <inputEntry id="IE_B"><text>"B"</text></inputEntry>
+        <outputEntry id="OE_B"><text>"Good"</text></outputEntry>
+      </rule>
+      <rule id="Rule_C">
+        <inputEntry id="IE_C"><text>"C"</text></inputEntry>
+        <outputEntry id="OE_C"><text>"Average"</text></outputEntry>
+      </rule>
+      <rule id="Rule_F">
+        <inputEntry id="IE_F"><text>"F"</text></inputEntry>
+        <outputEntry id="OE_F"><text>"Fail"</text></outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+</definitions>

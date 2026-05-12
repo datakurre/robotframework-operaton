@@ -6,11 +6,14 @@
   <artifactId>operaton-bpm-extension-robot</artifactId>
   <version>1.0-SNAPSHOT</version>
   <packaging>jar</packaging>
-  <name>robot</name>
+  <name>Operaton Robot Framework Runner</name>
+  <description>GraalPy-based Robot Framework test runner for Operaton BPM processes</description>
 
   <properties>
-    <graalpy.version>24.1.0</graalpy.version>
+    <graalpy.version>25.0.2</graalpy.version>
     <graalpy.edition>python-community</graalpy.edition>
+    <operaton.version>2.1.0</operaton.version>
+    <spring-boot.version>3.3.3</spring-boot.version>
     <native-maven-plugin.version>0.9.28</native-maven-plugin.version>
     <maven.compiler.target>17</maven.compiler.target>
     <maven.compiler.source>17</maven.compiler.source>
@@ -22,16 +25,46 @@
       <dependency>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-dependencies</artifactId>
-        <version>3.3.3</version>
+        <version>${spring-boot.version}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
       <dependency>
         <groupId>org.operaton.bpm</groupId>
         <artifactId>operaton-bom</artifactId>
-        <version>1.0.0-beta-1</version>
+        <version>${operaton.version}</version>
         <scope>import</scope>
         <type>pom</type>
+      </dependency>
+      <dependency>
+        <groupId>org.graalvm.polyglot</groupId>
+        <artifactId>${graalpy.edition}</artifactId>
+        <version>${graalpy.version}</version>
+        <type>pom</type>
+      </dependency>
+      <dependency>
+        <groupId>org.graalvm.python</groupId>
+        <artifactId>python-embedding</artifactId>
+        <version>${graalpy.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.junit.jupiter</groupId>
+        <artifactId>junit-jupiter</artifactId>
+        <version>5.10.2</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.assertj</groupId>
+        <artifactId>assertj-core</artifactId>
+        <version>3.25.3</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.operaton.bpm</groupId>
+        <artifactId>operaton-engine</artifactId>
+        <version>${operaton.version}</version>
+        <classifier>junit5</classifier>
+        <scope>test</scope>
       </dependency>
     </dependencies>
   </dependencyManagement>
@@ -40,18 +73,11 @@
     <dependency>
       <groupId>org.graalvm.polyglot</groupId>
       <artifactId>${graalpy.edition}</artifactId>
-      <version>${graalpy.version}</version>
       <type>pom</type>
     </dependency>
     <dependency>
       <groupId>org.graalvm.python</groupId>
       <artifactId>python-embedding</artifactId>
-      <version>${graalpy.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.operaton.bpm.springboot</groupId>
-      <artifactId>operaton-bpm-spring-boot-starter</artifactId>
-      <version>1.0.0-beta-1</version>
     </dependency>
     <dependency>
       <groupId>org.operaton.bpm.springboot</groupId>
@@ -69,7 +95,25 @@
       <groupId>com.h2database</groupId>
       <artifactId>h2</artifactId>
     </dependency>
+
+    <!-- Test dependencies -->
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.operaton.bpm</groupId>
+      <artifactId>operaton-engine</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
+
   <build>
     <plugins>
       <plugin>
@@ -79,6 +123,11 @@
         <configuration>
           <fork>true</fork>
         </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.2.5</version>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -100,20 +149,14 @@
         <executions>
           <execution>
             <configuration>
-              <!-- specify python packages and their versions as if used with pip -->
               <packages>
                 <package>robotframework==7.1.1</package>
               </packages>
               <pythonHome>
                 <includes>
-                  <!-- java-like regular expression what file paths should be included;
-                       if empty than default is all -->
                   <include>.*</include>
                 </includes>
                 <excludes>
-                <!-- java-like regular expression what file paths should be excluded;
-                     default is none -->
-                  <!-- <exclude></exclude> -->
                 </excludes>
               </pythonHome>
             </configuration>
@@ -125,6 +168,7 @@
       </plugin>
     </plugins>
   </build>
+
   <profiles>
     <profile>
       <id>native</id>
@@ -146,7 +190,6 @@
             </executions>
             <configuration>
               <buildArgs>
-                <!-- 3. Quick build mode -->
                 <buildArg>-Ob</buildArg>
               </buildArgs>
               <metadataRepository>

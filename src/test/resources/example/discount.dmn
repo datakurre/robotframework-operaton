@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/"
+             xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/"
+             xmlns:dc="http://www.omg.org/spec/DMN/20100524/DC/"
+             xmlns:camunda="http://camunda.org/schema/1.0/dmn"
+             id="Definitions_discount"
+             name="Discount Decision"
+             namespace="http://camunda.org/schema/1.0/dmn">
+
+  <decision id="discount" name="Discount" camunda:historyTimeToLive="180">
+    <decisionTable id="DecisionTable_discount" hitPolicy="FIRST">
+      <input id="Input_customerType" label="Customer Type" camunda:inputVariable="customerType">
+        <inputExpression id="InputExpression_customerType" typeRef="string">
+          <text>customerType</text>
+        </inputExpression>
+      </input>
+      <output id="Output_discount" label="Discount Percent" name="discountPercent" typeRef="integer" />
+      <rule id="Rule_gold">
+        <inputEntry id="InputEntry_gold">
+          <text>"gold"</text>
+        </inputEntry>
+        <outputEntry id="OutputEntry_gold">
+          <text>15</text>
+        </outputEntry>
+      </rule>
+      <rule id="Rule_silver">
+        <inputEntry id="InputEntry_silver">
+          <text>"silver"</text>
+        </inputEntry>
+        <outputEntry id="OutputEntry_silver">
+          <text>10</text>
+        </outputEntry>
+      </rule>
+      <rule id="Rule_default">
+        <inputEntry id="InputEntry_default">
+          <text></text>
+        </inputEntry>
+        <outputEntry id="OutputEntry_default">
+          <text>0</text>
+        </outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+</definitions>

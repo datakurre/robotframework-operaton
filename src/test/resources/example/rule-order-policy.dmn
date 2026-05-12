@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/"
+             xmlns:camunda="http://camunda.org/schema/1.0/dmn"
+             id="Definitions_badges"
+             name="Badges Decision"
+             namespace="http://camunda.org/schema/1.0/dmn">
+
+  <decision id="badges" name="Badges" camunda:historyTimeToLive="180">
+    <decisionTable id="DT_badges" hitPolicy="RULE ORDER">
+      <input id="Input_score" label="Score">
+        <inputExpression id="IE_score" typeRef="integer">
+          <text>score</text>
+        </inputExpression>
+      </input>
+      <output id="Output_badge" label="Badge" name="badge" typeRef="string" />
+      <rule id="Rule_platinum">
+        <inputEntry id="IE_platinum"><text>&gt;= 100</text></inputEntry>
+        <outputEntry id="OE_platinum"><text>"platinum"</text></outputEntry>
+      </rule>
+      <rule id="Rule_gold">
+        <inputEntry id="IE_gold"><text>&gt;= 50</text></inputEntry>
+        <outputEntry id="OE_gold"><text>"gold"</text></outputEntry>
+      </rule>
+      <rule id="Rule_participant">
+        <inputEntry id="IE_participant"><text>&gt;= 0</text></inputEntry>
+        <outputEntry id="OE_participant"><text>"participant"</text></outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+</definitions>
