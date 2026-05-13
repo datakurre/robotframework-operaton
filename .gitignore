@@ -2,14 +2,15 @@
 .devenv/
 .idea/
 .vscode/
+/result
 __pycache__/
 dependency-reduced-pom.xml
 devenv.local.nix
 devenv.local.yaml
 docs/
 log.html
+node_modules/
 output.xml
 report.html
 target/
 tmp/
-/resultnode_modules/
