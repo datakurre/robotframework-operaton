@@ -15401,13 +15401,17 @@ function getExecutedFlows(elementRegistry, activityHistory) {
   return executedFlows;
 }
 var EXECUTED_COLOR = "#52B415";
-var ACTIVE_COLOR = "#005588";
+var ACTIVE_COLOR = "#E67E00";
+var INCIDENT_COLOR = "#CC0000";
 function highlightElements(elementRegistry, activityHistory, document2) {
   const executedIds = new Set(
     activityHistory.filter((a) => !a.canceled && a.completed).map((a) => a.activityId)
   );
   const activeIds = new Set(
     activityHistory.filter((a) => !a.canceled && !a.completed).map((a) => a.activityId)
+  );
+  const incidentIds = new Set(
+    activityHistory.filter((a) => a.incident).map((a) => a.activityId)
   );
   const executedFlows = getExecutedFlows(elementRegistry, activityHistory);
   for (const element of elementRegistry.getAll()) {
@@ -15438,6 +15442,18 @@ function highlightElements(elementRegistry, activityHistory, document2) {
           );
         }
       }
+    } else if (!isFlow && incidentIds.has(id)) {
+      const visual = gfx.querySelector(".djs-visual");
+      const shapes = visual ? visual.querySelectorAll("circle,rect,polygon,path,ellipse") : [];
+      for (const shape of shapes) {
+        const existing = shape.getAttribute("style") || "";
+        if (!existing.includes("stroke-opacity:0") && !existing.includes("stroke:white")) {
+          shape.setAttribute(
+            "style",
+            existing.replace(/stroke:[^;]+/, `stroke:${INCIDENT_COLOR}`).replace(/fill:[^;]+/, "fill:hsl(0, 100%, 93%)")
+          );
+        }
+      }
     } else if (!isFlow && activeIds.has(id)) {
       const visual = gfx.querySelector(".djs-visual");
       const shapes = visual ? visual.querySelectorAll("circle,rect,polygon,path,ellipse") : [];
@@ -15446,7 +15462,7 @@ function highlightElements(elementRegistry, activityHistory, document2) {
         if (!existing.includes("stroke-opacity:0") && !existing.includes("stroke:white")) {
           shape.setAttribute(
             "style",
-            existing.replace(/stroke:[^;]+/, `stroke:${ACTIVE_COLOR}`).replace(/stroke-width:[^;]+/, "stroke-width:3px")
+            existing.replace(/stroke:[^;]+/, `stroke:${ACTIVE_COLOR}`).replace(/fill:[^;]+/, "fill:hsl(30, 100%, 93%)")
           );
         }
       }

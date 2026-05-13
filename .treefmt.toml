@@ -21,3 +21,8 @@ includes = ["*.java"]
 command = "robocop"
 options = ["format"]
 includes = ["*.robot"]
+
+[formatter.prettier]
+command = "prettier"
+options = ["--write"]
+includes = ["*.js", "*.mjs", "*.json", "*.ts", "*.jsx", "*.tsx"]

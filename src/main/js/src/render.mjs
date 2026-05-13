@@ -193,8 +193,9 @@ function getExecutedFlows(elementRegistry, activityHistory) {
 
 // ─── Executed-path detection ──────────────────────────────────────────────────
 
-const EXECUTED_COLOR = "#52B415";   // green — same as operaton-cockpit-plugins
-const ACTIVE_COLOR = "#005588";     // blue for currently active activities
+const EXECUTED_COLOR = "#52B415"; // green — same as operaton-cockpit-plugins
+const ACTIVE_COLOR = "#E67E00"; // orange for currently active activities
+const INCIDENT_COLOR = "#CC0000"; // red for activities with incidents
 
 function highlightElements(elementRegistry, activityHistory, document) {
   const executedIds = new Set(
@@ -202,6 +203,9 @@ function highlightElements(elementRegistry, activityHistory, document) {
   );
   const activeIds = new Set(
     activityHistory.filter((a) => !a.canceled && !a.completed).map((a) => a.activityId)
+  );
+  const incidentIds = new Set(
+    activityHistory.filter((a) => a.incident).map((a) => a.activityId)
   );
   const executedFlows = getExecutedFlows(elementRegistry, activityHistory);
 
@@ -241,8 +245,25 @@ function highlightElements(elementRegistry, activityHistory, document) {
           );
         }
       }
+    } else if (!isFlow && incidentIds.has(id)) {
+      // Highlight activities with incidents (red — takes priority over active)
+      const visual = gfx.querySelector(".djs-visual");
+      const shapes = visual
+        ? visual.querySelectorAll("circle,rect,polygon,path,ellipse")
+        : [];
+      for (const shape of shapes) {
+        const existing = shape.getAttribute("style") || "";
+        if (!existing.includes("stroke-opacity:0") && !existing.includes("stroke:white")) {
+          shape.setAttribute(
+            "style",
+            existing
+              .replace(/stroke:[^;]+/, `stroke:${INCIDENT_COLOR}`)
+              .replace(/fill:[^;]+/, "fill:hsl(0, 100%, 93%)")
+          );
+        }
+      }
     } else if (!isFlow && activeIds.has(id)) {
-      // Highlight currently active shapes
+      // Highlight currently active shapes (orange, same technique as executed)
       const visual = gfx.querySelector(".djs-visual");
       const shapes = visual
         ? visual.querySelectorAll("circle,rect,polygon,path,ellipse")
@@ -254,7 +275,7 @@ function highlightElements(elementRegistry, activityHistory, document) {
             "style",
             existing
               .replace(/stroke:[^;]+/, `stroke:${ACTIVE_COLOR}`)
-              .replace(/stroke-width:[^;]+/, "stroke-width:3px")
+              .replace(/fill:[^;]+/, "fill:hsl(30, 100%, 93%)")
           );
         }
       }

@@ -70,6 +70,18 @@ class BpmnKeywords:
             .asc()
             .list()
         )
+
+        # Collect incident activity IDs
+        incidents_raw = (
+            history.createHistoricIncidentQuery()
+            .processInstanceId(process_instance_id)
+            .list()
+        )
+        incident_activity_ids = set()
+        for i in range(int(incidents_raw.size())):
+            inc = incidents_raw.get(i)
+            incident_activity_ids.add(str(inc.getActivityId()))
+
         activities = []
         for i in range(int(activities_raw.size())):
             act = activities_raw.get(i)
@@ -78,6 +90,7 @@ class BpmnKeywords:
                 "activityType": str(act.getActivityType()),
                 "canceled": bool(act.isCanceled()),
                 "completed": act.getEndTime() is not None,
+                "incident": str(act.getActivityId()) in incident_activity_ids,
             })
 
         input_json = json.dumps({"bpmn": bpmn_xml, "activities": activities})
