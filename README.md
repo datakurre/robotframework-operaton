@@ -260,6 +260,43 @@ Then reference it in your suite:
 Library    Remote    http://127.0.0.1:8270    WITH NAME    Operaton
 ```
 
+### Faster iteration in VS Code (persistent Remote server)
+
+By default the CPython proxy spawns a fresh JVM for every test run, which
+takes 20–30 seconds. For rapid edit-run cycles, keep one Remote server running
+in a terminal and point the proxy at it — each "Run Test" in RobotCode then
+connects instantly.
+
+**Step 1 — start the server once (keep it running):**
+
+```sh
+make remote-shade        # fat JAR, port 8270 (fastest)
+# or: make remote        # Maven classpath runner
+```
+
+**Step 2 — tell the proxy to connect instead of spawning:**
+
+Uncomment the `OPERATON_REMOTE` line in `robot.toml`:
+
+```toml
+[env]
+OPERATON_JAR = "target/operaton-bpm-extension-robot-1.0-SNAPSHOT-fat.jar"
+OPERATON_REMOTE = "http://127.0.0.1:8270"
+```
+
+Or set it as a shell variable before running:
+
+```sh
+OPERATON_REMOTE=http://127.0.0.1:8270 robot src/test/resources/example/Example.robot
+```
+
+The engine lifecycle is still managed per-test via the `Setup Process Engine` /
+`Teardown Process Engine` keywords — the persistent server does not affect test
+isolation.
+
+To revert to auto-spawn mode, comment out `OPERATON_REMOTE` (or unset the env
+var).
+
 ---
 
 ## Native image (optional)

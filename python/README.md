@@ -22,6 +22,8 @@ pip install robotframework-operaton
 
 ## Configuration
 
+### Auto-spawn mode (default)
+
 Set the `OPERATON_JAR` environment variable to point at the fat JAR:
 
 ```bash
@@ -34,6 +36,34 @@ Or pass it as a library argument in your Robot suite:
 *** Settings ***
 Library    Operaton    jar=/path/to/fat.jar
 ```
+
+The library starts a fresh JVM Remote server on first import and shuts it
+down when the Python process exits. GraalPy startup takes 20–30 s.
+
+### Connect mode (persistent / faster iteration)
+
+If you keep a long-running Remote server running in a terminal
+(e.g. `make remote-shade` in the main repo), the proxy can connect to it
+instantly instead of spawning a new JVM for every test run:
+
+```bash
+# Start the server once (keep the terminal open):
+make remote-shade        # fat JAR, port 8270
+
+# Point the proxy at the existing server:
+export OPERATON_REMOTE=http://127.0.0.1:8270
+```
+
+Or pass the URI directly as a library argument:
+
+```robot
+*** Settings ***
+Library    Operaton    remote=http://127.0.0.1:8270
+```
+
+In connect mode the proxy never spawns or terminates a JVM process. The
+process engine lifecycle is still managed per-test via `Setup Process Engine`
+/ `Teardown Process Engine`.
 
 ## Usage
 

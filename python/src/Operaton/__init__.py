@@ -1,18 +1,32 @@
 """Operaton Robot Framework Library — CPython proxy.
 
-This module provides a dynamic Robot Framework library that auto-spawns the
-Operaton GraalPy/JVM backend as a Remote server and delegates all keyword
-calls over XML-RPC.
+This module provides a dynamic Robot Framework library that delegates all
+keyword calls to the Operaton GraalPy/JVM backend over XML-RPC.
 
-Configuration:
-    Set the ``OPERATON_JAR`` environment variable to the path of the
-    ``operaton-bpm-extension-robot-*-fat.jar`` file. Alternatively, pass the
-    ``jar`` argument when importing the library::
+Two operating modes are supported:
+
+**Auto-spawn mode (default)**
+    The library starts a fresh JVM Remote server on first import and tears it
+    down when the Python process exits.  Set the ``OPERATON_JAR`` environment
+    variable to the path of the ``operaton-bpm-extension-robot-*-fat.jar``
+    file, or pass the ``jar`` argument::
 
         Library    Operaton    jar=/path/to/fat.jar
 
-The JVM process is started automatically on first use and stopped when the
-Python process exits.
+**Connect mode (persistent / faster iteration)**
+    If a long-running Remote server is already running (e.g. started with
+    ``make remote-shade``), skip the 20-30 s JVM startup by pointing the proxy
+    at it.  Set the ``OPERATON_REMOTE`` environment variable::
+
+        export OPERATON_REMOTE=http://127.0.0.1:8270
+
+    Or pass the URI directly::
+
+        Library    Operaton    remote=http://127.0.0.1:8270
+
+    The proxy connects immediately and never spawns or stops a JVM process.
+    The process engine lifecycle is still managed per-test via the
+    ``Setup Process Engine`` / ``Teardown Process Engine`` keywords.
 """
 
 import atexit
@@ -36,14 +50,39 @@ class Operaton:
     ROBOT_LIBRARY_SCOPE = "GLOBAL"
     ROBOT_LIBRARY_DOC_FORMAT = "TEXT"
 
-    def __init__(self, jar: str = "", port: int = 0, timeout: int = 30):
+    def __init__(
+        self,
+        jar: str = "",
+        port: int = 0,
+        timeout: int = 30,
+        remote: str = "",
+    ):
         """Initialize the Operaton proxy library.
 
         Args:
             jar: Path to the fat JAR. Defaults to ``OPERATON_JAR`` env var.
-            port: Port for the Remote server (0 = auto-select).
+                 Ignored when connecting to an existing server.
+            port: Port for the auto-spawned Remote server (0 = auto-select).
+                  Ignored when connecting to an existing server.
             timeout: Seconds to wait for the JVM to start.
+                     Ignored when connecting to an existing server.
+            remote: URI of a pre-existing Remote server, e.g.
+                    ``http://127.0.0.1:8270``.  Defaults to the
+                    ``OPERATON_REMOTE`` environment variable.  When set, the
+                    proxy connects immediately without spawning a JVM process.
         """
+        self._proc: subprocess.Popen | None = None
+        self._tmpdir: str | None = None
+        self._remote: Remote | None = None
+
+        remote_uri = remote or os.environ.get("OPERATON_REMOTE", "")
+        if remote_uri:
+            # Connect-only mode: attach to an existing Remote server.
+            self._remote = Remote(uri=remote_uri)
+            logger.info(f"Connected to existing Operaton Remote Server at {remote_uri}")
+            return
+
+        # Auto-spawn mode: start a fresh JVM Remote server.
         self._jar = jar or os.environ.get("OPERATON_JAR", "")
         if not self._jar:
             raise RuntimeError(
@@ -58,8 +97,6 @@ class Operaton:
         self._port = port
         self._tmpdir = tempfile.mkdtemp(prefix="operaton-remote-")
         self._port_file = os.path.join(self._tmpdir, "port")
-        self._proc: subprocess.Popen | None = None
-        self._remote: Remote | None = None
 
         self._start_server()
         atexit.register(self._shutdown)
@@ -163,8 +200,11 @@ class Operaton:
             return ["*args"]
 
     def _shutdown(self):
-        """Stop the JVM Remote server process."""
-        if self._proc and self._proc.poll() is None:
+        """Stop the JVM Remote server process (no-op in connect mode)."""
+        if self._proc is None:
+            # Connect mode: we do not own the server; leave it running.
+            return
+        if self._proc.poll() is None:
             try:
                 # Try graceful stop via XML-RPC
                 if self._remote:
@@ -188,7 +228,7 @@ class Operaton:
                 pass
         # Clean up temp dir
         try:
-            if os.path.isdir(self._tmpdir):
+            if self._tmpdir and os.path.isdir(self._tmpdir):
                 shutil.rmtree(self._tmpdir, ignore_errors=True)
         except Exception:
             pass

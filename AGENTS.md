@@ -52,15 +52,16 @@ Tests are driven by JUnit 5: each `*Test.java` calls `RobotCliTest.runRobot(...)
 | [pom.xml](pom.xml) | Single-module Maven build; flattened properties; `native` profile. |
 | [src/main/java/org/operaton/bpm/extension/robot/Robot.java](src/main/java/org/operaton/bpm/extension/robot/Robot.java) | CLI entry point (forwards args to `robot.run.run_cli`). Dispatches `--watch` and `--remote`. |
 | [src/main/java/org/operaton/bpm/extension/robot/RobotRemote.java](src/main/java/org/operaton/bpm/extension/robot/RobotRemote.java) | Remote server mode: hosts Operaton library over XML-RPC for CPython/RobotCode. |
+| [src/main/java/org/operaton/bpm/extension/robot/RobotWatch.java](src/main/java/org/operaton/bpm/extension/robot/RobotWatch.java) | Watch mode (`--watch`): keeps one GraalPy context alive; re-runs Robot on file changes (~1 s). Recreates context on `.py` changes (~2–3 s). |
 | [src/main/java/org/operaton/bpm/extension/robot/Libdoc.java](src/main/java/org/operaton/bpm/extension/robot/Libdoc.java) | Generates keyword docs (HTML) and machine-readable `.libspec` for RobotCode LSP. |
 | [src/main/resources/org.graalvm.python.vfs/src/Operaton.py](src/main/resources/org.graalvm.python.vfs/src/Operaton.py) | The keyword library. **Add new keywords here.** |
 | [src/test/java/org/operaton/bpm/extension/robot/RobotCliTest.java](src/test/java/org/operaton/bpm/extension/robot/RobotCliTest.java) | Shared `runRobot(outputDir, suitePath)` helper + smoke tests. |
 | `src/test/java/.../*Test.java` | One JUnit class per feature; each invokes a same-named `.robot` suite. |
 | [src/test/resources/example/](src/test/resources/example/) | Robot suites + BPMN + DMN fixtures. |
-| [python/](python/) | CPython proxy wheel (`robotframework-operaton`). Auto-spawns JVM Remote server. |
+| [python/](python/) | CPython proxy wheel (`robotframework-operaton`). Auto-spawns JVM Remote server, or connects to a pre-existing one via `OPERATON_REMOTE`. |
 | [robot.toml](robot.toml) | RobotCode configuration for VS Code keyword discovery and test execution. |
 | [devenv.nix](devenv.nix) | JDK 21, Maven, formatters. |
-| [Makefile](Makefile) | Standard targets: `build`, `test`, `check`, `format`, `clean`, `native`, `robot`, `shade`, `libspec`, `remote`, `wheel`. |
+| [Makefile](Makefile) | Standard targets — see table below. |
 | `tmp/` | **Reference checkout — do not modify.** Originally the source the library was ported from. |
 
 ## Build and test — always via devenv
@@ -79,6 +80,30 @@ devenv shell --no-eval-cache -- make wheel                   # build CPython pro
 ```
 
 The first build downloads Robot Framework 7.1.1 into the GraalPy VFS via `graalpy-maven-plugin`; expect several minutes on a cold cache.
+
+### Makefile target reference
+
+| Target | Description |
+|---|---|
+| `build` | `mvn package -DskipTests` |
+| `shade` | Fat JAR: `mvn -Pshade package -DskipTests` |
+| `native` | Native image: `mvn -Pnative package` |
+| `clean` | `mvn clean` |
+| `test` | All JUnit + Robot suites via `mvn test` |
+| `check` | `mvn verify` (test + integration checks) |
+| `robot` / `run` | Run a single suite via Maven classpath runner (`SUITE=path/to/Suite.robot`) |
+| `run-shade` | Run a single suite via fat JAR (`SUITE=...`) |
+| `run-native` | Run via native binary (`SUITE=...`) |
+| `watch` | Rebuild VFS on `.py` changes; re-run via Maven on any change |
+| `watch-shade` | Persistent GraalPy context; re-run on any change (~1 s) — fastest dev loop |
+| `watch-native` | Re-run via native binary on `.robot`/`.bpmn`/`.dmn` changes |
+| `remote` | Long-running Remote server on `:8270` via Maven classpath |
+| `remote-shade` | Long-running Remote server on `:8270` via fat JAR |
+| `libspec` | Generate `docs/Operaton.libspec` for RobotCode LSP |
+| `docs` | Generate `docs/Operaton.html` keyword reference |
+| `format` | `google-java-format` all Java source files |
+| `wheel` | Build CPython proxy wheel under `python/dist/` |
+| `install-proxy` | `pip install -e python/` (editable install) |
 
 ## Conventions
 
@@ -138,4 +163,4 @@ The first build downloads Robot Framework 7.1.1 into the GraalPy VFS via `graalp
 devenv shell --no-eval-cache -- mvn -q test
 ```
 
-All 16 test classes should pass.
+All test classes should pass (count grows as features are added; run `mvn test` and check for `BUILD SUCCESS`).
