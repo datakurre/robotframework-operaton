@@ -101,19 +101,19 @@ public class RobotWatch {
       }
     }
 
+    // Create initial context and run once before starting to watch
+    final String finalVfsSrcPath = vfsSrcPath;
+    final boolean debugMode = Robot.isDebugMode(args);
+    if (debugMode) {
+      System.setProperty("ROBOT_LOG_LEVEL", "INFO");
+    }
+    Context[] ctxHolder = {createContext(cwd, finalVfsSrcPath, debugMode)};
+    runSuite(ctxHolder[0], cwd, suite.toString());
+
     try (WatchService watchService = FileSystems.getDefault().newWatchService()) {
       for (Path dir : watchDirs) {
         dir.register(watchService, ENTRY_MODIFY, ENTRY_CREATE);
       }
-
-      // Create initial context and run once
-      final String finalVfsSrcPath = vfsSrcPath;
-      final boolean debugMode = Robot.isDebugMode(args);
-      if (debugMode) {
-        System.setProperty("ROBOT_LOG_LEVEL", "INFO");
-      }
-      Context[] ctxHolder = {createContext(cwd, finalVfsSrcPath, debugMode)};
-      runSuite(ctxHolder[0], cwd, suite.toString());
 
       while (true) {
         WatchKey key = watchService.poll(500, TimeUnit.MILLISECONDS);
@@ -204,9 +204,6 @@ public class RobotWatch {
                   _robot_run(
                       _watch_suite,
                       outputdir=_watch_outputdir,
-                      output="NONE",
-                      log="NONE",
-                      report="NONE",
                   )
                   """,
                   "<watch-run>")

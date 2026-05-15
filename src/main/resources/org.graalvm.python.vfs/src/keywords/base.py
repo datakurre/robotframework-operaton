@@ -12,6 +12,11 @@ except ImportError:
         def type(klass: str) -> Any:
             pass
 
+try:
+    from robot.api import logger as _rf_logger  # pyright: ignore
+except Exception:
+    _rf_logger = None
+
 
 Variables = java.type("org.operaton.bpm.engine.variable.Variables")
 
@@ -38,7 +43,11 @@ def except_interop_exception(func):
                             if len(frames) >= 5:
                                 break
                         if frames:
-                            message += "\nJava stack trace:\n  " + "\n  ".join(frames)
+                            stack_text = "Java stack trace:\n  " + "\n  ".join(frames)
+                            if _rf_logger is not None:
+                                _rf_logger.debug(stack_text)
+                            else:
+                                print(stack_text)
             except Exception:
                 pass
             assert False, message

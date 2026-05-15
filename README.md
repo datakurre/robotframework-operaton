@@ -66,6 +66,9 @@ hover documentation, and the **Run Test** gutter button all work out of the box.
 ### Prerequisites
 
 - **Java 21+** on `PATH` (or `JAVA_HOME` set)
+- **Node.js 18+** on `PATH` — optional; required only for `Log Bpmn Execution` and
+  `Log Dmn Result` (diagram rendering). If `node` is absent those keywords log a
+  warning and skip rendering without failing the test.
 
 ### 1. Download the fat JAR and libspec
 
@@ -260,6 +263,7 @@ The `Operaton` library exposes ~44 keywords. The most common ones:
 | DMN | `Evaluate Decision`, `Evaluate Decision Table`, `Decision Result Should Contain`, `Decision Single Result`, `Decision Single Entry`, `Collect Entries` | both |
 | Clock / timers | `Set Clock`, `Advance Clock`, `Reset Clock`, `Execute Timer Jobs` | both |
 | History | `Get Completed Instances`, `Get Historic Variables` | both |
+| Visualization *(Node.js required)* | `Log Bpmn Execution`, `Log Dmn Result` | both |
 | Forms (Vasara) | `Submit Task Form`, `Get Task Form Variables` | vasara only |
 
 The full library source is [src/main/resources/org.graalvm.python.vfs/src/Operaton.py](src/main/resources/org.graalvm.python.vfs/src/Operaton.py).
