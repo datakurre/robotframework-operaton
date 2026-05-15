@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions
+  xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+  id="Definitions_formfields"
+  targetNamespace="http://bpmn.io/schema/bpmn">
+
+  <bpmn:process id="form-fields-process" isExecutable="true" camunda:historyTimeToLive="180">
+
+    <bpmn:startEvent id="StartEvent_1" name="Start">
+      <bpmn:extensionElements>
+        <camunda:formData>
+          <!-- Start form field: string — used to verify VasaraStartEventExecutionListener
+               auto-initializes missing variables when process is started without a form. -->
+          <camunda:formField id="startNote" label="Start Note" type="string" defaultValue=""/>
+        </camunda:formData>
+      </bpmn:extensionElements>
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="data-entry-task"/>
+
+    <bpmn:userTask id="data-entry-task" name="Data Entry">
+      <bpmn:extensionElements>
+        <camunda:formData>
+          <!-- json type: exercises VasaraJsonFormType -->
+          <camunda:formField id="jsonData" label="JSON Data" type="json" defaultValue="null"/>
+          <!-- date type: exercises VasaraDateFormType (null/empty-safe) -->
+          <camunda:formField id="startDate" label="Start Date" type="date"/>
+          <!-- number type: exercises VasaraNumberFormType (Long/Double/String) -->
+          <camunda:formField id="amount" label="Amount" type="long">
+            <camunda:validation>
+              <!-- 'type' constraint: exercises VasaraFormValidatorNoop -->
+              <camunda:constraint name="type"/>
+            </camunda:validation>
+          </camunda:formField>
+        </camunda:formData>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="data-entry-task" targetRef="EndEvent_1"/>
+
+    <bpmn:endEvent id="EndEvent_1" name="End">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+    </bpmn:endEvent>
+
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="form-fields-process">
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <dc:Bounds x="152" y="117" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="data-entry-task_di" bpmnElement="data-entry-task">
+        <dc:Bounds x="260" y="95" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_1_di" bpmnElement="EndEvent_1">
+        <dc:Bounds x="432" y="117" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="188" y="135"/>
+        <di:waypoint x="260" y="135"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="360" y="135"/>
+        <di:waypoint x="432" y="135"/>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

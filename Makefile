@@ -2,6 +2,7 @@ JAVA := $(shell which java)
 JAVA_FILES := $(shell find . -name "*.java" -path "*/src/*" -not -path "./tmp/*" -type f)
 JAR := target/operaton-bpm-extension-robot-1.0-SNAPSHOT.jar
 JAR_FAT := target/operaton-bpm-extension-robot-1.0-SNAPSHOT-fat.jar
+JAR_VASARA := target/operaton-bpm-extension-robot-1.0-SNAPSHOT-vasara.jar
 NATIVE_BIN := target/operaton-bpm-extension-robot
 WATCH_PATHS := src/test/resources/example src/main/resources/org.graalvm.python.vfs/src
 VFS_SRC := src/main/resources/org.graalvm.python.vfs/src
@@ -21,6 +22,10 @@ build:
 .PHONY: shade
 shade:
 	mvn -Pshade package -DskipTests
+
+.PHONY: shade-vasara
+shade-vasara:
+	mvn -Pshade-vasara package -DskipTests
 
 .PHONY: native
 native:
@@ -103,6 +108,10 @@ robot:
 run-shade:
 	$(JAVA) -jar $(JAR_FAT) $(SUITE)
 
+.PHONY: run-vasara
+run-vasara:
+	$(JAVA) -jar $(JAR_VASARA) $(SUITE)
+
 .PHONY: run-native
 run-native:
 	./$(NATIVE_BIN) $(SUITE)
@@ -155,6 +164,10 @@ watch:
 .PHONY: watch-shade
 watch-shade:
 	$(JAVA) -jar $(JAR_FAT) --watch $(or $(SUITE),src/test/resources/example)
+
+.PHONY: watch-vasara
+watch-vasara:
+	$(JAVA) -jar $(JAR_VASARA) --watch $(or $(SUITE),src/test/resources/example)
 
 .PHONY: watch-native
 watch-native:
@@ -209,6 +222,10 @@ remote:
 .PHONY: remote-shade
 remote-shade:
 	$(JAVA) -jar $(JAR_FAT) --remote --port 8270 --port-file operaton-remote.port
+
+.PHONY: remote-vasara
+remote-vasara:
+	$(JAVA) -jar $(JAR_VASARA) --remote --port 8270 --port-file operaton-remote.port
 
 # ─── Python proxy wheel ──────────────────────────────────────────────────────
 

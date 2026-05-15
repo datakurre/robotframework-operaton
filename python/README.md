@@ -1,6 +1,6 @@
 # robotframework-operaton
 
-A CPython proxy package for the [Operaton Robot Framework library](https://github.com/operaton/robotframework-operaton).
+A CPython proxy package for the [Operaton Robot Framework library](https://gitlab.com/vasara-bpm/robotframework-operaton).
 
 This package auto-spawns the GraalPy/JVM backend as a Robot Framework Remote
 Server and delegates all keyword calls over XML-RPC. It allows you to use the

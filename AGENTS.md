@@ -64,6 +64,24 @@ Tests are driven by JUnit 5: each `*Test.java` calls `RobotCliTest.runRobot(...)
 | [Makefile](Makefile) | Standard targets — see table below. |
 | `tmp/` | **Reference checkout — do not modify.** Originally the source the library was ported from. |
 
+## Development setup
+
+The project uses [devenv.sh](https://devenv.sh/) to manage the JDK, Maven, and
+other tools. Inside the devenv shell everything you need is on `PATH`:
+
+```sh
+devenv shell
+```
+
+Or run individual commands without an interactive shell:
+
+```sh
+devenv shell --no-eval-cache -- mvn test
+```
+
+(The repository ships with a working dev container; if you open it in VS Code
+you are already inside the shell.)
+
 ## Build and test — always via devenv
 
 Use `devenv shell --no-eval-cache -- <cmd>` for one-shot invocations. Inside an interactive `devenv shell` you can run the commands directly.
@@ -80,6 +98,28 @@ devenv shell --no-eval-cache -- make wheel                   # build CPython pro
 ```
 
 The first build downloads Robot Framework 7.1.1 into the GraalPy VFS via `graalpy-maven-plugin`; expect several minutes on a cold cache.
+
+### Running a single suite
+
+```sh
+# Via Maven classpath runner:
+devenv shell --no-eval-cache -- make robot SUITE=src/test/resources/example/Example.robot
+
+# Via fat JAR (faster after first build):
+devenv shell --no-eval-cache -- make run-shade SUITE=src/test/resources/example/Example.robot
+```
+
+### Logging
+
+To see full Operaton engine output during a dev run, pass `--loglevel DEBUG`:
+
+```sh
+# Via Maven runner
+devenv shell --no-eval-cache -- make robot SUITE=src/test/resources/example/Example.robot -- --loglevel DEBUG
+
+# Via fat JAR
+devenv shell --no-eval-cache -- make run-shade SUITE="--loglevel DEBUG src/test/resources/example/Example.robot"
+```
 
 ### Makefile target reference
 

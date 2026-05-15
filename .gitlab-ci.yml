@@ -1,0 +1,133 @@
+stages:
+  - test
+  - release
+
+variables:
+  MAVEN_OPTS: >-
+    -Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository
+    -Dmaven.artifact.threads=4
+
+# ── Cache Maven local repository across jobs/pipelines ────────────────────────
+# The graalpy-maven-plugin downloads Python wheels into ~/.m2 on first build;
+# subsequent pipelines reuse the cache and are significantly faster.
+.maven-cache: &maven-cache
+  cache:
+    key: maven-$CI_COMMIT_REF_SLUG
+    paths:
+      - .m2/repository/
+
+# ── Test ──────────────────────────────────────────────────────────────────────
+
+test:
+  stage: test
+  image: eclipse-temurin:21-jdk-jammy
+  <<: *maven-cache
+  script:
+    - mvn -q test
+  except:
+    - tags   # release job below covers tag pipelines
+
+# ── Release ───────────────────────────────────────────────────────────────────
+# Triggered only on version tags (e.g. v1.0.0).
+# Pipeline:
+#   build-release  — sets version, tests, builds all artefacts, uploads to
+#                    the GitLab Generic Package Registry
+#   publish-release — creates the GitLab Release with download links
+
+build-release:
+  stage: release
+  image: eclipse-temurin:21-jdk-jammy
+  <<: *maven-cache
+  only:
+    - tags
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq python3 python3-pip curl
+    - pip3 install --quiet build
+  script:
+    - VERSION=${CI_COMMIT_TAG#v}
+    - echo "VERSION=$VERSION" >> release.env
+
+    # Set Maven project version to match the tag.
+    - mvn -q versions:set -DnewVersion=$VERSION -DgenerateBackupPoms=false
+
+    # Set Python proxy version to match the tag.
+    - sed -i "s/^version = .*/version = \"$VERSION\"/" python/pyproject.toml
+
+    # Full test run.
+    - mvn test
+
+    # Build fat JAR (standard — no Vasara classes).
+    - mvn -Pshade package -DskipTests
+
+    # Build Vasara fat JAR (includes fi.jyu.vasara.* form customizations).
+    - mvn -Pshade-vasara package -DskipTests
+
+    # Generate Operaton.libspec using Maven's managed test classpath.
+    - mkdir -p docs
+    - >
+      mvn -q exec:exec
+      -Dexec.executable=java
+      -Dexec.classpathScope=test
+      "-Dexec.args=-cp %classpath org.operaton.bpm.extension.robot.Libdoc docs/Operaton.libspec"
+
+    # Build CPython proxy wheel.
+    - python3 -m build --wheel --outdir python/dist/ python/
+
+    # Upload artefacts to the GitLab Generic Package Registry.
+    - FAT_JAR="target/operaton-bpm-extension-robot-${VERSION}-fat.jar"
+    - VASARA_JAR="target/operaton-bpm-extension-robot-${VERSION}-vasara.jar"
+    - WHEEL=$(ls python/dist/*.whl | head -1)
+    - >
+      curl --silent --show-error --fail
+      --header "JOB-TOKEN: $CI_JOB_TOKEN"
+      --upload-file "$FAT_JAR"
+      "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/operaton-robot/${VERSION}/operaton-bpm-extension-robot-${VERSION}-fat.jar"
+    - >
+      curl --silent --show-error --fail
+      --header "JOB-TOKEN: $CI_JOB_TOKEN"
+      --upload-file "$VASARA_JAR"
+      "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/operaton-robot/${VERSION}/operaton-bpm-extension-robot-${VERSION}-vasara.jar"
+    - >
+      curl --silent --show-error --fail
+      --header "JOB-TOKEN: $CI_JOB_TOKEN"
+      --upload-file "docs/Operaton.libspec"
+      "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/operaton-robot/${VERSION}/Operaton.libspec"
+    - >
+      curl --silent --show-error --fail
+      --header "JOB-TOKEN: $CI_JOB_TOKEN"
+      --upload-file "$WHEEL"
+      "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/operaton-robot/${VERSION}/$(basename $WHEEL)"
+
+  artifacts:
+    reports:
+      # Export VERSION so the publish-release job can use it in the release block.
+      dotenv: release.env
+
+publish-release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  needs:
+    - job: build-release
+      artifacts: true
+  only:
+    - tags
+  script:
+    - echo "Creating release for $CI_COMMIT_TAG (version $VERSION)"
+  release:
+    tag_name: $CI_COMMIT_TAG
+    name: "operaton-robot $CI_COMMIT_TAG"
+    description: "See [CHANGELOG](CHANGELOG.md) for details."
+    assets:
+      links:
+        - name: "Fat JAR (standard)"
+          url: "$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/operaton-robot/$VERSION/operaton-bpm-extension-robot-$VERSION-fat.jar"
+          link_type: package
+        - name: "Fat JAR (Vasara form customizations)"
+          url: "$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/operaton-robot/$VERSION/operaton-bpm-extension-robot-$VERSION-vasara.jar"
+          link_type: package
+        - name: "Operaton.libspec (RobotCode keyword discovery)"
+          url: "$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/operaton-robot/$VERSION/Operaton.libspec"
+          link_type: other
+        - name: "CPython proxy wheel"
+          url: "$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/operaton-robot/$VERSION/robotframework_operaton-$VERSION-py3-none-any.whl"
+          link_type: package

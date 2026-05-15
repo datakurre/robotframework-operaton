@@ -15,6 +15,7 @@ from keywords.typed_variables import TypedVariables
 from keywords.timer_keywords import TimerKeywords
 from keywords.external_task_keywords import ExternalTaskKeywords
 from keywords.bpmn_keywords import BpmnKeywords
+from keywords.form_keywords import FormKeywords
 
 try:
     import java  # pyright: ignore
@@ -30,6 +31,16 @@ ProcessEngineConfiguration = (
     java.type("org.operaton.bpm.engine.ProcessEngineConfiguration"))
 assertThat: Any = (
     getattr(java.type("org.operaton.bpm.engine.test.assertions.bpmn.BpmnAwareTests"), "assertThat", None))
+
+try:
+    _SpinPlugin = java.type("org.operaton.spin.plugin.impl.SpinProcessEnginePlugin")
+except Exception:
+    _SpinPlugin = None
+
+try:
+    _VasaraPlugin = java.type("fi.jyu.vasara.VasaraPlugin")
+except Exception:
+    _VasaraPlugin = None
 
 
 class Operaton(DynamicCore):
@@ -47,6 +58,7 @@ class Operaton(DynamicCore):
             TimerKeywords(self),
             ExternalTaskKeywords(self),
             BpmnKeywords(self),
+            FormKeywords(self),
         ]
         DynamicCore.__init__(self, components)
 
@@ -54,12 +66,19 @@ class Operaton(DynamicCore):
     @except_interop_exception
     def setup_process_engine(self) -> Any:
         if self.engine is None:
-            self.engine = (
+            config = (
                 ProcessEngineConfiguration.createStandaloneInMemProcessEngineConfiguration()
                 .setHistory(ProcessEngineConfiguration.HISTORY_FULL)
                 .setHostname("localhost")
-                .buildProcessEngine()
             )
+            # Always register the Spin plugin so JSON/XML serialization is available.
+            if _SpinPlugin is not None:
+                config.getProcessEnginePlugins().add(_SpinPlugin())
+            # When running from the vasara fat JAR, activate Vasara form customizations
+            # automatically by classpath-presence of fi.jyu.vasara.VasaraPlugin.
+            if _VasaraPlugin is not None:
+                config.getProcessEnginePlugins().add(_VasaraPlugin())
+            self.engine = config.buildProcessEngine()
         return self.engine
 
     @keyword
