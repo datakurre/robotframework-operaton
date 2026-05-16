@@ -204,6 +204,8 @@ public class RobotWatch {
                   _robot_run(
                       _watch_suite,
                       outputdir=_watch_outputdir,
+                      log="NONE",
+                      report="NONE",
                   )
                   """,
                   "<watch-run>")
