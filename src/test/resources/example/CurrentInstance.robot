@@ -10,8 +10,8 @@ Start Instance Sets Current Instance State
     [Teardown]    Teardown Process Engine
     Deploy Resources    ${CURDIR}${/}current-instance-process.bpmn
     ${instance}=    Start Instance    current-instance-process
-    Should Have Task    task_defintion_key=review-request
-    Complete Task    task_definition_key=review-request
+    Should Have Task    name=review-request
+    Complete Task    name=review-request
     Should Be Ended
 
 Business Key Auto Generated As UUID4
@@ -42,12 +42,12 @@ Get Current Instance Returns Instance ID
     ${current}=    Get Current Instance
     Should Be Equal    ${instance}    ${current}
 
-Explicit Instance ID Still Works
-    [Documentation]    Backward compatibility: explicit instance ID overrides current instance state.
+Current Instance Used Across Multiple Keywords
+    [Documentation]    Once started, the current instance is used automatically by all keywords.
     [Setup]    Setup Process Engine
     [Teardown]    Teardown Process Engine
     Deploy Resources    ${CURDIR}${/}current-instance-process.bpmn
-    ${instance}=    Start Instance    current-instance-process
-    Should Have Task    ${instance}    review-request
-    Complete Task    ${instance}    review-request
-    Should Be Ended    ${instance}
+    Start Instance    current-instance-process
+    Should Have Task    review-request
+    Complete Task    review-request
+    Should Be Ended

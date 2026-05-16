@@ -55,24 +55,20 @@ class TimerKeywords:
 
     @keyword
     @except_interop_exception
-    def execute_timer_jobs(self, process_instance_id: str = ""):
-        """Executes all timer jobs, optionally filtered by process instance.
+    def execute_timer_jobs(self):
+        """Executes all timer jobs for the current process instance.
 
-        When omitted, uses the current instance in scope if one exists;
+        Uses the current instance in scope if one exists;
         if no current instance is set, executes all timer jobs across all instances.
 
         Example usage in Robot::
 
             Execute Timer Jobs
-            Execute Timer Jobs    ${instance_id}
         """
         assert self.ctx.engine, "No engine"
         management = self.ctx.engine.getManagementService()
         query = management.createJobQuery().timers()
-        # Only resolve if caller did not pass an explicit ID
-        effective_id = process_instance_id
-        if not effective_id and self.ctx._current_instance_id:
-            effective_id = self.ctx._current_instance_id
+        effective_id = self.ctx._current_instance_id
         if effective_id:
             query = query.processInstanceId(effective_id)
         jobs = query.list()

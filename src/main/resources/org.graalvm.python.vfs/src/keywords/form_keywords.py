@@ -21,25 +21,24 @@ class FormKeywords:
     @except_interop_exception
     def submit_task_form(
         self,
-        process_instance_id: str = "",
-        task_definition_key: str = "",
+        name: str = "",
         **form_variables: Any,
     ):
         """Submits a user task form with the given field values.
 
-        ``process_instance_id`` defaults to the current instance in scope.
-        ``task_definition_key`` may be a definition key *or* a human-readable task name.
+        Uses the current instance in scope (set by ``Start Instance``).
+        ``name`` may be a task definition key *or* a human-readable task name.
 
         Variables are passed as named keyword arguments:
 
         Example usage in Robot::
 
-            Submit Task Form    ${instance}    my-task
+            Submit Task Form    my-task
             ...    firstName=Alice    amount=42    approved=${True}
         """
         assert self.ctx.engine, "No engine"
-        instance_id = self.ctx._resolve_instance_id(process_instance_id)
-        resolved_key = self.ctx._resolve_task_key(instance_id, task_definition_key)
+        instance_id = self.ctx._resolve_instance_id()
+        resolved_key = self.ctx._resolve_task_key(instance_id, name)
         task_service = self.ctx.engine.getTaskService()
         form_service = self.ctx.engine.getFormService()
         query = task_service.createTaskQuery().processInstanceId(instance_id)
@@ -56,25 +55,24 @@ class FormKeywords:
     @except_interop_exception
     def get_task_form_variables(
         self,
-        process_instance_id: str = "",
-        task_definition_key: str = "",
+        name: str = "",
     ) -> dict:
         """Returns all form field variables for the active user task as a Python dict.
 
-        ``process_instance_id`` defaults to the current instance in scope.
-        ``task_definition_key`` may be a definition key *or* a human-readable task name.
+        Uses the current instance in scope (set by ``Start Instance``).
+        ``name`` may be a task definition key *or* a human-readable task name.
 
         Keys are the form field IDs; values are their current typed values converted
         to Python-native types (str, int, float, bool, or None).
 
         Example usage in Robot::
 
-            ${vars}=    Get Task Form Variables    ${instance}    my-task
+            ${vars}=    Get Task Form Variables    my-task
             Should Be Equal    ${vars}[status]    pending
         """
         assert self.ctx.engine, "No engine"
-        instance_id = self.ctx._resolve_instance_id(process_instance_id)
-        resolved_key = self.ctx._resolve_task_key(instance_id, task_definition_key)
+        instance_id = self.ctx._resolve_instance_id()
+        resolved_key = self.ctx._resolve_task_key(instance_id, name)
         task_service = self.ctx.engine.getTaskService()
         form_service = self.ctx.engine.getFormService()
         query = task_service.createTaskQuery().processInstanceId(instance_id)

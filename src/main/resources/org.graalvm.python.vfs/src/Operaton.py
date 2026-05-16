@@ -315,34 +315,38 @@ class Operaton(DynamicCore):
 
     @keyword
     @except_interop_exception
-    def should_have_task(self, process_instance_id: str = "", task_defintion_key: str = ""):
-        """Asserts that the process instance has an active task with the given definition key or name.
+    def should_have_task(self, name: str = ""):
+        """Asserts that the current process instance has an active task.
 
-        Both ``process_instance_id`` and ``task_defintion_key`` can be omitted when a
-        current instance is in scope (set by ``Start Instance``).
+        Uses the current instance in scope (set by ``Start Instance``).
         The task may be identified by its definition key *or* by its human-readable name.
+        When *name* is omitted, asserts that at least one active task exists.
         """
         assert self.engine, "No engine"
-        instance_id = self._resolve_instance_id(process_instance_id)
-        resolved_key = self._resolve_task_key(instance_id, task_defintion_key)
-        runtime = self.engine.getRuntimeService()
-        query = runtime.createProcessInstanceQuery()
-        query.processInstanceId(instance_id)
-        instance = query.singleResult()
-        assertThat(instance).task().hasDefinitionKey(resolved_key)
+        instance_id = self._resolve_instance_id()
+        resolved_key = self._resolve_task_key(instance_id, name)
+        task_service = self.engine.getTaskService()
+        if resolved_key:
+            tasks = task_service.createTaskQuery().processInstanceId(instance_id).taskDefinitionKey(resolved_key).list()
+            assert int(tasks.size()) > 0, (
+                f"No active task with key or name '{name}' for instance '{instance_id}'"
+            )
+        else:
+            count = int(task_service.createTaskQuery().processInstanceId(instance_id).count())
+            assert count > 0, f"No active tasks found for instance '{instance_id}'"
 
     @keyword
     @except_interop_exception
-    def complete_task(self, process_instance_id: str = "", task_definition_key: str = "", variables: Any = None):
-        """Completes the active user task for the process instance.
+    def complete_task(self, name: str = "", variables: Any = None):
+        """Completes the active user task for the current process instance.
 
-        ``process_instance_id`` defaults to the current instance in scope.
-        ``task_definition_key`` may be a definition key *or* a human-readable task name.
-        When omitted (and only one task is active), that task is completed.
+        Uses the current instance in scope (set by ``Start Instance``).
+        The task may be identified by its definition key *or* by its human-readable name.
+        When *name* is omitted (and only one task is active), that task is completed.
         """
         assert self.engine, "No engine"
-        instance_id = self._resolve_instance_id(process_instance_id)
-        resolved_key = self._resolve_task_key(instance_id, task_definition_key)
+        instance_id = self._resolve_instance_id()
+        resolved_key = self._resolve_task_key(instance_id, name)
         task_service = self.engine.getTaskService()
         query = task_service.createTaskQuery().processInstanceId(instance_id)
         if resolved_key:
@@ -356,32 +360,31 @@ class Operaton(DynamicCore):
 
     @keyword
     @except_interop_exception
-    def get_variable(self, process_instance_id: str = "", variable_name: str = "") -> Any:
-        """Returns the value of a process variable. Defaults to the current instance."""
+    def get_variable(self, variable_name: str) -> Any:
+        """Returns the value of a process variable from the current process instance."""
         assert self.engine, "No engine"
-        instance_id = self._resolve_instance_id(process_instance_id)
+        instance_id = self._resolve_instance_id()
         runtime = self.engine.getRuntimeService()
         return runtime.getVariable(instance_id, variable_name)
 
     @keyword
     @except_interop_exception
-    def set_variable(self, process_instance_id: str = "", variable_name: str = "", variable_value: Any = None):
-        """Sets a process variable. Defaults to the current instance."""
+    def set_variable(self, variable_name: str, variable_value: Any = None):
+        """Sets a process variable on the current process instance."""
         assert self.engine, "No engine"
-        instance_id = self._resolve_instance_id(process_instance_id)
+        instance_id = self._resolve_instance_id()
         runtime = self.engine.getRuntimeService()
         runtime.setVariable(instance_id, variable_name, variable_value)
 
     @keyword
     @except_interop_exception
-    def get_tasks(self, process_instance_id: str = "") -> list:
-        """Returns all active tasks for the process instance as a list of dicts.
+    def get_tasks(self) -> list:
+        """Returns all active tasks for the current process instance as a list of dicts.
 
         Each dict has: id, name, taskDefinitionKey, assignee.
-        Defaults to the current instance in scope.
         """
         assert self.engine, "No engine"
-        instance_id = self._resolve_instance_id(process_instance_id)
+        instance_id = self._resolve_instance_id()
         task_service = self.engine.getTaskService()
         tasks = task_service.createTaskQuery().processInstanceId(instance_id).list()
         result = []

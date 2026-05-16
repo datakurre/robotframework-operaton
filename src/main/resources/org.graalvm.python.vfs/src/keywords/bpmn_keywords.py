@@ -22,17 +22,17 @@ class BpmnKeywords:
 
     @keyword
     @except_interop_exception
-    def log_bpmn_execution(self, process_instance_id: str = ""):
+    def log_bpmn_execution(self):
         """Renders the executed BPMN path as SVG and logs it to the Robot log.
 
         Fetches BPMN XML and activity history from the engine, then delegates to
         the bundled ``bpmn-render.js`` script (invoked via ``node``).
 
         Requires Node.js 18+ on PATH. If ``node`` is unavailable, logs a warning
-        and returns without failing. Defaults to the current instance in scope.
+        and returns without failing. Uses the current instance in scope.
         """
         assert self.ctx.engine, "No engine"
-        instance_id = self.ctx._resolve_instance_id(process_instance_id)
+        instance_id = self.ctx._resolve_instance_id()
 
         BpmnRenderer = java.type(
             "org.operaton.bpm.extension.robot.BpmnRenderer"

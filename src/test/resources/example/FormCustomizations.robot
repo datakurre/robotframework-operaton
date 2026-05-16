@@ -11,9 +11,9 @@ Submit Task Form With Named Arguments
     [Setup]    Setup Process Engine
     [Teardown]    Teardown Process Engine
     Deploy Resources    ${CURDIR}${/}form-fields-process.bpmn
-    ${instance}=    Start Instance    form-fields-process
-    Should Have Task    ${instance}    data-entry-task
-    Submit Task Form    ${instance}    data-entry-task
+    Start Instance    form-fields-process
+    Should Have Task    data-entry-task
+    Submit Task Form    data-entry-task
     ...    jsonData={"key": "value"}
     ...    startDate=
     ...    amount=42
@@ -24,9 +24,9 @@ Get Task Form Variables Returns Field Map
     [Setup]    Setup Process Engine
     [Teardown]    Teardown Process Engine
     Deploy Resources    ${CURDIR}${/}form-fields-process.bpmn
-    ${instance}=    Start Instance    form-fields-process
-    Should Have Task    ${instance}    data-entry-task
-    ${vars}=    Get Task Form Variables    ${instance}    data-entry-task
+    Start Instance    form-fields-process
+    Should Have Task    data-entry-task
+    ${vars}=    Get Task Form Variables    data-entry-task
     Dictionary Should Contain Key    ${vars}    jsonData
     Dictionary Should Contain Key    ${vars}    startDate
     Dictionary Should Contain Key    ${vars}    amount
@@ -38,8 +38,8 @@ Submit Task Form With Decimal Amount
     [Setup]    Setup Process Engine
     [Teardown]    Teardown Process Engine
     Deploy Resources    ${CURDIR}${/}form-fields-process.bpmn
-    ${instance}=    Start Instance    form-fields-process
-    Submit Task Form    ${instance}    data-entry-task
+    Start Instance    form-fields-process
+    Submit Task Form    data-entry-task
     ...    jsonData=null
     ...    startDate=
     ...    amount=3
@@ -51,8 +51,8 @@ Noop Validator Accepts Any String For Constrained Field
     [Setup]    Setup Process Engine
     [Teardown]    Teardown Process Engine
     Deploy Resources    ${CURDIR}${/}form-fields-process.bpmn
-    ${instance}=    Start Instance    form-fields-process
-    Submit Task Form    ${instance}    data-entry-task
+    Start Instance    form-fields-process
+    Submit Task Form    data-entry-task
     ...    jsonData=null
     ...    startDate=
     ...    amount=99
