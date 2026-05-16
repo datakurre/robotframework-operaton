@@ -35,7 +35,7 @@ import org.graalvm.python.embedding.GraalPyResources;
  * <p>Usage (via Robot.main --watch):
  *
  * <pre>
- *   java -jar robot.jar --watch [suite-path] [--py-src path/to/vfs/src]
+ *   java -jar robot.jar --watch [suite-path] [--py-src path/to/vfs/src] [rf-options...]
  * </pre>
  */
 public class RobotWatch {
@@ -69,6 +69,8 @@ public class RobotWatch {
     if (!rest.isEmpty()) {
       suitePath = rest.get(0);
     }
+    List<String> extraArgs =
+        rest.size() > 1 ? new ArrayList<>(rest.subList(1, rest.size())) : new ArrayList<>();
 
     // Default to on-disk VFS src if it exists (project development layout)
     if (vfsSrcPath == null) {
@@ -108,7 +110,7 @@ public class RobotWatch {
       System.setProperty("ROBOT_LOG_LEVEL", "INFO");
     }
     Context[] ctxHolder = {createContext(cwd, finalVfsSrcPath, debugMode)};
-    runSuite(ctxHolder[0], cwd, suite.toString());
+    runSuite(ctxHolder[0], cwd, suite.toString(), extraArgs);
 
     try (WatchService watchService = FileSystems.getDefault().newWatchService()) {
       for (Path dir : watchDirs) {
@@ -145,7 +147,7 @@ public class RobotWatch {
           ctxHolder[0] = createContext(cwd, finalVfsSrcPath, debugMode);
         }
 
-        runSuite(ctxHolder[0], cwd, suite.toString());
+        runSuite(ctxHolder[0], cwd, suite.toString(), extraArgs);
       }
 
     } catch (InterruptedException e) {
@@ -160,7 +162,6 @@ public class RobotWatch {
         GraalPyResources.contextBuilder()
             .allowAllAccess(true)
             .allowExperimentalOptions(true)
-            .option("python.IsolateNativeModules", "true")
             .option("engine.WarnInterpreterOnly", "false");
     if (!debugMode) {
       builder.logHandler(OutputStream.nullOutputStream());
@@ -180,7 +181,7 @@ public class RobotWatch {
                       sys.path.insert(0, _watch_vfs_src)
                   sys.path.insert(0 if not _watch_vfs_src else 1, _watch_cwd)
                   sys.path.insert(1 if not _watch_vfs_src else 2, os.path.join(_watch_cwd, "lib"))
-                  from robot.run import run as _robot_run
+                  from robot.run import run_cli as _robot_run_cli
                   """,
                   "<watch-setup>")
               .build();
@@ -191,22 +192,24 @@ public class RobotWatch {
     return ctx;
   }
 
-  private static void runSuite(Context ctx, String cwd, String suitePath) {
+  private static void runSuite(Context ctx, String cwd, String suitePath, List<String> extraArgs) {
     System.out.printf(">>> Running: %s%n", suitePath);
     long start = System.currentTimeMillis();
     try {
       ctx.getBindings(PYTHON).putMember("_watch_suite", suitePath);
       ctx.getBindings(PYTHON).putMember("_watch_outputdir", cwd);
+      ctx.getBindings(PYTHON).putMember("_watch_extra_args", extraArgs);
       Source run =
           Source.newBuilder(
                   PYTHON,
                   """
-                  _robot_run(
-                      _watch_suite,
-                      outputdir=_watch_outputdir,
-                      log="NONE",
-                      report="NONE",
-                  )
+                  _extra = list(_watch_extra_args)
+                  _args = []
+                  if not any(a == '--outputdir' or a.startswith('--outputdir=') for a in _extra):
+                      _args += ['--outputdir', _watch_outputdir]
+                  _args += _extra
+                  _args.append(_watch_suite)
+                  _robot_run_cli(_args, exit=False)
                   """,
                   "<watch-run>")
               .build();
