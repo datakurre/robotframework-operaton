@@ -44,8 +44,25 @@ First Run
     [Setup]       Setup Process Engine
     [Teardown]    Teardown Process Engine
     Deploy Resources    ${CURDIR}${/}process.bpmn
-    ${instance}=    Start Instance    my-project-process
-    Should Have Task    ${instance}    say-hello
+    Start Instance    my-project-process
+    Should Have Task    say-hello
+    Complete Task    say-hello
+    Should Be Ended
+```
+
+After `Start Instance`, the library tracks the instance automatically — no
+need to store the return value in a variable for subsequent keywords.
+
+When you need to work with multiple instances in one test (rare), pass the
+stored ID as the optional trailing `process_instance_id` argument:
+
+```robot
+    ${a}=    Start Instance    my-process
+    ${b}=    Start Instance    my-process
+    Should Have Task    say-hello    ${a}
+    Should Have Task    say-hello    ${b}
+    Complete Task    say-hello    ${a}
+    Should Be Ended    ${a}
 ```
 
 The matching `process.bpmn` is a single `start → user task → end` model with

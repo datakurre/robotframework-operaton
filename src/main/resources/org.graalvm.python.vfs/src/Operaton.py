@@ -75,17 +75,33 @@ class Operaton(DynamicCore):
     |     Complete Task    Review Order
     |     Should Be Ended
 
+    The library automatically tracks the instance started by ``Start Instance``, so
+    task and variable keywords work without an explicit instance ID in most tests.
+
     = Current Instance State =
 
     After ``Start Instance`` or ``Start Instance With Variables``, the library stores the instance
-    ID and business key as *current instance state*. All keywords that accept
-    ``process_instance_id`` will automatically use the current instance when the argument is
+    ID and business key as *current instance state*. All keywords that accept an optional
+    ``process_instance_id`` argument will automatically use the current instance when the argument is
     omitted, so you rarely need to capture the return value explicitly.
 
     If no ``business_key`` is supplied to ``Start Instance``, a UUID4 is generated automatically.
     The state is cleared when ``Teardown Process Engine`` runs.
 
     Use ``Get Current Instance`` and ``Get Current Business Key`` to inspect the stored values.
+
+    When you need to work with multiple concurrent instances in one test (uncommon), pass the
+    saved ID explicitly as the optional trailing ``process_instance_id`` argument available on
+    all task, variable, state, and history keywords:
+
+    | ${a}=    Start Instance    my-process
+    | ${b}=    Start Instance    my-process
+    | Should Have Task    say-hello    ${a}
+    | Complete Task    say-hello    ${b}
+    | Should Be Ended    ${a}    # note: a is still active here — just an example
+
+    For task keywords the argument order is ``(name, process_instance_id)``;
+    for variable keywords it is ``(variable_name, [variable_value,] process_instance_id)``.
 
     = Task Identification =
 
@@ -315,15 +331,16 @@ class Operaton(DynamicCore):
 
     @keyword
     @except_interop_exception
-    def should_have_task(self, name: str = ""):
-        """Asserts that the current process instance has an active task.
+    def should_have_task(self, name: str = "", process_instance_id: str = ""):
+        """Asserts that the process instance has an active task.
 
-        Uses the current instance in scope (set by ``Start Instance``).
+        Uses the current instance in scope (set by ``Start Instance``) unless
+        ``process_instance_id`` is provided explicitly.
         The task may be identified by its definition key *or* by its human-readable name.
         When *name* is omitted, asserts that at least one active task exists.
         """
         assert self.engine, "No engine"
-        instance_id = self._resolve_instance_id()
+        instance_id = self._resolve_instance_id(process_instance_id)
         resolved_key = self._resolve_task_key(instance_id, name)
         task_service = self.engine.getTaskService()
         if resolved_key:
@@ -337,15 +354,16 @@ class Operaton(DynamicCore):
 
     @keyword
     @except_interop_exception
-    def complete_task(self, name: str = "", variables: Any = None):
-        """Completes the active user task for the current process instance.
+    def complete_task(self, name: str = "", process_instance_id: str = "", variables: Any = None):
+        """Completes the active user task for the process instance.
 
-        Uses the current instance in scope (set by ``Start Instance``).
+        Uses the current instance in scope (set by ``Start Instance``) unless
+        ``process_instance_id`` is provided explicitly.
         The task may be identified by its definition key *or* by its human-readable name.
         When *name* is omitted (and only one task is active), that task is completed.
         """
         assert self.engine, "No engine"
-        instance_id = self._resolve_instance_id()
+        instance_id = self._resolve_instance_id(process_instance_id)
         resolved_key = self._resolve_task_key(instance_id, name)
         task_service = self.engine.getTaskService()
         query = task_service.createTaskQuery().processInstanceId(instance_id)
@@ -360,31 +378,38 @@ class Operaton(DynamicCore):
 
     @keyword
     @except_interop_exception
-    def get_variable(self, variable_name: str) -> Any:
-        """Returns the value of a process variable from the current process instance."""
+    def get_variable(self, variable_name: str, process_instance_id: str = "") -> Any:
+        """Returns the value of a process variable.
+
+        Defaults to the current instance in scope; pass ``process_instance_id`` to override.
+        """
         assert self.engine, "No engine"
-        instance_id = self._resolve_instance_id()
+        instance_id = self._resolve_instance_id(process_instance_id)
         runtime = self.engine.getRuntimeService()
         return runtime.getVariable(instance_id, variable_name)
 
     @keyword
     @except_interop_exception
-    def set_variable(self, variable_name: str, variable_value: Any = None):
-        """Sets a process variable on the current process instance."""
+    def set_variable(self, variable_name: str, variable_value: Any = None, process_instance_id: str = ""):
+        """Sets a process variable.
+
+        Defaults to the current instance in scope; pass ``process_instance_id`` to override.
+        """
         assert self.engine, "No engine"
-        instance_id = self._resolve_instance_id()
+        instance_id = self._resolve_instance_id(process_instance_id)
         runtime = self.engine.getRuntimeService()
         runtime.setVariable(instance_id, variable_name, variable_value)
 
     @keyword
     @except_interop_exception
-    def get_tasks(self) -> list:
-        """Returns all active tasks for the current process instance as a list of dicts.
+    def get_tasks(self, process_instance_id: str = "") -> list:
+        """Returns all active tasks for the process instance as a list of dicts.
 
         Each dict has: id, name, taskDefinitionKey, assignee.
+        Defaults to the current instance in scope; pass ``process_instance_id`` to override.
         """
         assert self.engine, "No engine"
-        instance_id = self._resolve_instance_id()
+        instance_id = self._resolve_instance_id(process_instance_id)
         task_service = self.engine.getTaskService()
         tasks = task_service.createTaskQuery().processInstanceId(instance_id).list()
         result = []

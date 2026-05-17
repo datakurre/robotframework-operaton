@@ -11,10 +11,10 @@ class ProcessAssertions:
 
     @keyword
     @except_interop_exception
-    def should_be_ended(self):
-        """Asserts that the current process instance has ended."""
+    def should_be_ended(self, process_instance_id: str = ""):
+        """Asserts that the process instance has ended. Defaults to the current instance."""
         assert self.ctx.engine, "No engine"
-        instance_id = self.ctx._resolve_instance_id()
+        instance_id = self.ctx._resolve_instance_id(process_instance_id)
         history = self.ctx.engine.getHistoryService()
         instance = history.createHistoricProcessInstanceQuery() \
             .processInstanceId(instance_id).singleResult()
@@ -27,10 +27,10 @@ class ProcessAssertions:
 
     @keyword
     @except_interop_exception
-    def should_be_active(self):
-        """Asserts that the current process instance is active."""
+    def should_be_active(self, process_instance_id: str = ""):
+        """Asserts that the process instance is currently active. Defaults to the current instance."""
         assert self.ctx.engine, "No engine"
-        instance_id = self.ctx._resolve_instance_id()
+        instance_id = self.ctx._resolve_instance_id(process_instance_id)
         runtime = self.ctx.engine.getRuntimeService()
         instance = runtime.createProcessInstanceQuery() \
             .processInstanceId(instance_id).singleResult()
@@ -43,10 +43,10 @@ class ProcessAssertions:
 
     @keyword
     @except_interop_exception
-    def should_be_suspended(self):
-        """Asserts that the current process instance is suspended."""
+    def should_be_suspended(self, process_instance_id: str = ""):
+        """Asserts that the process instance is suspended. Defaults to the current instance."""
         assert self.ctx.engine, "No engine"
-        instance_id = self.ctx._resolve_instance_id()
+        instance_id = self.ctx._resolve_instance_id(process_instance_id)
         runtime = self.ctx.engine.getRuntimeService()
         instance = runtime.createProcessInstanceQuery() \
             .processInstanceId(instance_id).singleResult()
@@ -59,28 +59,28 @@ class ProcessAssertions:
 
     @keyword
     @except_interop_exception
-    def suspend_instance(self):
-        """Suspends the current process instance."""
+    def suspend_instance(self, process_instance_id: str = ""):
+        """Suspends a running process instance. Defaults to the current instance."""
         assert self.ctx.engine, "No engine"
-        instance_id = self.ctx._resolve_instance_id()
+        instance_id = self.ctx._resolve_instance_id(process_instance_id)
         runtime = self.ctx.engine.getRuntimeService()
         runtime.suspendProcessInstanceById(instance_id)
 
     @keyword
     @except_interop_exception
-    def activate_instance(self):
-        """Activates the suspended current process instance."""
+    def activate_instance(self, process_instance_id: str = ""):
+        """Activates a suspended process instance. Defaults to the current instance."""
         assert self.ctx.engine, "No engine"
-        instance_id = self.ctx._resolve_instance_id()
+        instance_id = self.ctx._resolve_instance_id(process_instance_id)
         runtime = self.ctx.engine.getRuntimeService()
         runtime.activateProcessInstanceById(instance_id)
 
     @keyword
     @except_interop_exception
-    def should_have_n_active_tasks(self, expected_count: Any = 0):
-        """Asserts that the current process instance has exactly N active tasks."""
+    def should_have_n_active_tasks(self, expected_count: Any = 0, process_instance_id: str = ""):
+        """Asserts that the process instance has exactly N active tasks. Defaults to the current instance."""
         assert self.ctx.engine, "No engine"
-        instance_id = self.ctx._resolve_instance_id()
+        instance_id = self.ctx._resolve_instance_id(process_instance_id)
         task_service = self.ctx.engine.getTaskService()
         tasks = task_service.createTaskQuery() \
             .processInstanceId(instance_id).list()

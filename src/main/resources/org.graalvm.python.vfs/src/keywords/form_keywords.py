@@ -22,11 +22,12 @@ class FormKeywords:
     def submit_task_form(
         self,
         name: str = "",
+        process_instance_id: str = "",
         **form_variables: Any,
     ):
         """Submits a user task form with the given field values.
 
-        Uses the current instance in scope (set by ``Start Instance``).
+        Defaults to the current instance in scope; pass ``process_instance_id`` to override.
         ``name`` may be a task definition key *or* a human-readable task name.
 
         Variables are passed as named keyword arguments:
@@ -37,7 +38,7 @@ class FormKeywords:
             ...    firstName=Alice    amount=42    approved=${True}
         """
         assert self.ctx.engine, "No engine"
-        instance_id = self.ctx._resolve_instance_id()
+        instance_id = self.ctx._resolve_instance_id(process_instance_id)
         resolved_key = self.ctx._resolve_task_key(instance_id, name)
         task_service = self.ctx.engine.getTaskService()
         form_service = self.ctx.engine.getFormService()
@@ -56,10 +57,11 @@ class FormKeywords:
     def get_task_form_variables(
         self,
         name: str = "",
+        process_instance_id: str = "",
     ) -> dict:
         """Returns all form field variables for the active user task as a Python dict.
 
-        Uses the current instance in scope (set by ``Start Instance``).
+        Defaults to the current instance in scope; pass ``process_instance_id`` to override.
         ``name`` may be a task definition key *or* a human-readable task name.
 
         Keys are the form field IDs; values are their current typed values converted
@@ -71,7 +73,7 @@ class FormKeywords:
             Should Be Equal    ${vars}[status]    pending
         """
         assert self.ctx.engine, "No engine"
-        instance_id = self.ctx._resolve_instance_id()
+        instance_id = self.ctx._resolve_instance_id(process_instance_id)
         resolved_key = self.ctx._resolve_task_key(instance_id, name)
         task_service = self.ctx.engine.getTaskService()
         form_service = self.ctx.engine.getFormService()
