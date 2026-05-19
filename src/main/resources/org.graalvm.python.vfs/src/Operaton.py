@@ -354,7 +354,7 @@ class Operaton(DynamicCore):
 
     @keyword
     @except_interop_exception
-    def complete_task(self, name: str = "", process_instance_id: str = "", variables: Any = None):
+    def complete_task(self, name: str = "", process_instance_id: str = "", **variables: Any):
         """Completes the active user task for the process instance.
 
         Uses the current instance in scope (set by ``Start Instance``) unless
@@ -372,7 +372,10 @@ class Operaton(DynamicCore):
         task = query.singleResult()
         assert task, f"No task found for instance {instance_id}"
         if variables:
-            task_service.complete(task.getId(), variables)
+            var_map = Variables.createVariables()
+            for var_name, value in variables.items():
+                var_map.putValue(var_name, value)
+            task_service.complete(task.getId(), var_map)
         else:
             task_service.complete(task.getId())
 
