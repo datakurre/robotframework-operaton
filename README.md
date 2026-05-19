@@ -87,15 +87,23 @@ hover documentation, and the **Run Test** gutter button all work out of the box.
   `Log Dmn Result` (diagram rendering). If `node` is absent those keywords log a
   warning and skip rendering without failing the test.
 
-### 1. Download the fat JAR and libspec
+### 1. Get the fat JAR and libspec
 
-From the [GitLab Releases](https://gitlab.com/vasara-bpm/robotframework-operaton/-/releases)
-page, download:
+**From a release** — download from the
+[GitLab Releases](https://gitlab.com/vasara-bpm/robotframework-operaton/-/releases) page:
 
 - `operaton-bpm-extension-robot-<version>-fat.jar` (standard) **or**
   `operaton-bpm-extension-robot-<version>-vasara.jar` (with Vasara form customizations)
   → place it anywhere convenient (e.g. `lib/`)
 - `Operaton.libspec` → place it in `docs/` in your project root
+
+**From source** — requires Java 21, Maven, and [devenv](https://devenv.sh/):
+
+```sh
+make dist-fat       # → target/*-fat.jar
+make dist-vasara    # → target/*-vasara.jar
+make dist-libspec   # → docs/Operaton.libspec
+```
 
 ### 2. Install the CPython proxy
 
@@ -313,5 +321,16 @@ gates the Operaton/Java log level simultaneously:
 |---|---|---|
 | *(not set)* / `INFO` / `WARN` | default | suppressed (WARN+) |
 | `DEBUG` or `TRACE` | verbose | INFO+ (full engine output) |
+
+---
+
+## Contributing
+
+See [AGENTS.md](AGENTS.md) for the full development guide: architecture,
+build setup, adding keywords, test conventions, Makefile targets, and version
+upgrade procedures.
+
+See [UPGRADE.md](UPGRADE.md) for step-by-step instructions on bumping
+dependency versions in Maven and Nix.
 
 ---

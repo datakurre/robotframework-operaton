@@ -11,9 +11,11 @@ DMN_RENDER_JS := src/main/resources/dmn-render.js
 JS_SOURCES := src/main/js/src/render.mjs src/main/js/package.json
 
 .PHONY: all
-all: build
+all: dist-fat
 
 # ─── Build targets ───────────────────────────────────────────────────────────
+# build   — thin JAR (dev / test classpath; not a distributable)
+# dist-*  — distributable deliverables (fat JARs, native binary, wheel, docs)
 
 # GraalPy's bundled sysconfig.py is missing try/except ImportError in
 # _init_posix(), which causes ensurepip to fail with
@@ -35,17 +37,39 @@ _fix-graalpy-sysconfig:
 build: _fix-graalpy-sysconfig
 	mvn package -DskipTests
 
-.PHONY: shade
-shade: _fix-graalpy-sysconfig
+# Primary deliverable: standard fat JAR (all core keywords, no Vasara classes).
+.PHONY: dist-fat
+dist-fat: _fix-graalpy-sysconfig
 	mvn -Pshade package -DskipTests
 
-.PHONY: shade-vasara
-shade-vasara: _fix-graalpy-sysconfig
+# Secondary deliverable: Vasara fat JAR (includes fi.jyu.vasara.* form customizations).
+.PHONY: dist-vasara
+dist-vasara: _fix-graalpy-sysconfig
 	mvn -Pshade-vasara package -DskipTests
 
-.PHONY: native
-native:
+# Secondary deliverable: native binary (GraalVM native-image; slow to build).
+.PHONY: dist-native
+dist-native:
 	mvn -Pnative package
+
+# CPython proxy wheel (robotframework-operaton).
+.PHONY: dist-wheel
+dist-wheel:
+	cd python && pip wheel --no-deps -w dist .
+
+# Keyword HTML reference (docs/Operaton.html).
+.PHONY: dist-docs
+dist-docs:
+	mkdir -p docs
+	mvn -q -DskipTests package
+	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Libdoc docs/Operaton.html"
+
+# Machine-readable keyword spec for RobotCode LSP (docs/Operaton.libspec).
+.PHONY: dist-libspec
+dist-libspec:
+	mkdir -p docs
+	mvn -q -DskipTests package
+	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Libdoc docs/Operaton.libspec"
 
 .PHONY: clean
 clean:
@@ -110,18 +134,16 @@ check:
 endif
 
 # ─── Run targets ─────────────────────────────────────────────────────────────
-# SUITE: path to .robot file (for run/run-shade/run-native/robot)
+# SUITE: path to .robot file
 #   e.g. make run SUITE=src/test/resources/example/Example.robot
+#
+# run        — fat JAR (default; fast after first dist-fat)
+# run-vasara — Vasara fat JAR
+# run-native — native binary
+# robot      — Maven classpath runner (no pre-built JAR needed)
 
 .PHONY: run
-run: robot
-
-.PHONY: robot
-robot:
-	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Robot ${SUITE}"
-
-.PHONY: run-shade
-run-shade:
+run:
 	$(JAVA) -jar $(JAR_FAT) $(SUITE)
 
 .PHONY: run-vasara
@@ -132,28 +154,39 @@ run-vasara:
 run-native:
 	./$(NATIVE_BIN) $(SUITE)
 
+.PHONY: robot
+robot:
+	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Robot ${SUITE}"
+
 # ─── Watch mode ──────────────────────────────────────────────────────────────
 # Watches for .robot/.bpmn/.dmn/.py changes and re-runs on every save.
 #
-#   make watch                             — Maven runner, all suites
-#   make watch SUITE=Example               — Maven runner, one suite (class-name prefix)
-#   make watch-shade                       — fat JAR in-process watcher, all suites
-#   make watch-shade SUITE=path/to.robot   — fat JAR in-process watcher, one suite
-#   make watch-native                      — native binary runner, all suites
-#   make watch-native SUITE=path/to.robot  — native binary runner, one suite
+#   make watch                             — fat JAR in-process watcher, all suites (~1 s)
+#   make watch SUITE=path/to.robot         — fat JAR in-process watcher, one suite
+#   make watch-vasara                      — Vasara fat JAR watcher
+#   make watch-dev                         — Maven classpath runner, rebuilds VFS on .py changes
+#   make watch-native                      — native binary runner
 #
-# watch-shade uses a persistent GraalPy context: the JVM starts once and Robot
+# watch uses a persistent GraalPy context: the JVM starts once and Robot
 # Framework is re-invoked in the same context on each file change (~1s re-run).
-# On .py changes the context is recreated; Python source is loaded from disk
-# (no fat JAR rebuild needed during watch).
+# On .py changes the context is recreated (~2-3s) and Python source is loaded
+# from disk (no fat JAR rebuild needed during watch).
 #
 # .py changes:
-#   watch        → VFS rebuild via mvn process-resources, then re-run
-#   watch-shade  → context recreation only (~2-3s), disk-loaded Python
-#   watch-native → warning only; run 'make native' manually to bake .py changes in
+#   watch        → context recreation only (~2-3s), disk-loaded Python
+#   watch-dev    → VFS rebuild via mvn process-resources, then re-run
+#   watch-native → warning only; run 'make dist-native' manually to bake .py changes in
 
 .PHONY: watch
 watch:
+	$(JAVA) -jar $(JAR_FAT) --watch $(or $(SUITE),src/test/resources/example)
+
+.PHONY: watch-vasara
+watch-vasara:
+	$(JAVA) -jar $(JAR_VASARA) --watch $(or $(SUITE),src/test/resources/example)
+
+.PHONY: watch-dev
+watch-dev:
 	@echo "Watching: $(WATCH_PATHS)"
 	@echo "Suite filter: $(or $(SUITE),<all>)"
 	@echo "Press Ctrl+C to stop."
@@ -177,19 +210,11 @@ watch:
 	  echo "─────────────────────────────────────────────"; \
 	done
 
-.PHONY: watch-shade
-watch-shade:
-	$(JAVA) -jar $(JAR_FAT) --watch $(or $(SUITE),src/test/resources/example)
-
-.PHONY: watch-vasara
-watch-vasara:
-	$(JAVA) -jar $(JAR_VASARA) --watch $(or $(SUITE),src/test/resources/example)
-
 .PHONY: watch-native
 watch-native:
 	@echo "Watching: $(WATCH_PATHS)"
 	@echo "Suite: $(or $(SUITE),src/test/resources/example)"
-	@echo "Runner: native binary  (.py changes require 'make native' manually)"
+	@echo "Runner: native binary  (.py changes require 'make dist-native' manually)"
 	@echo "Press Ctrl+C to stop."
 	@echo "─────────────────────────────────────────────"
 	@while true; do \
@@ -199,7 +224,7 @@ watch-native:
 	  echo ">>> Changed: $$CHANGED"; \
 	  if echo "$$CHANGED" | grep -q '\.py$$'; then \
 	    echo ">>> WARNING: Python source changed — native binary is NOT updated."; \
-	    echo ">>>          Run 'make native' to bake the changes in, then restart watch-native."; \
+	    echo ">>>          Run 'make dist-native' to bake the changes in, then restart watch-native."; \
 	    echo "─────────────────────────────────────────────"; \
 	    continue; \
 	  fi; \
@@ -214,18 +239,6 @@ watch-native:
 format:
 	google-java-format -i $(JAVA_FILES)
 
-.PHONY: docs
-docs:
-	mkdir -p docs
-	mvn -q -DskipTests package
-	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Libdoc docs/Operaton.html"
-
-.PHONY: libspec
-libspec:
-	mkdir -p docs
-	mvn -q -DskipTests package
-	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Libdoc docs/Operaton.libspec"
-
 # ─── Remote server ───────────────────────────────────────────────────────────
 # Starts the Operaton keyword library as a Robot Framework Remote Server.
 # Other tools (RobotCode, plain CPython robot) connect via:
@@ -233,21 +246,17 @@ libspec:
 
 .PHONY: remote
 remote:
-	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Robot --remote --port 8270 --port-file operaton-remote.port"
-
-.PHONY: remote-shade
-remote-shade:
 	$(JAVA) -jar $(JAR_FAT) --remote --port 8270 --port-file operaton-remote.port
 
 .PHONY: remote-vasara
 remote-vasara:
 	$(JAVA) -jar $(JAR_VASARA) --remote --port 8270 --port-file operaton-remote.port
 
-# ─── Python proxy wheel ──────────────────────────────────────────────────────
+.PHONY: remote-dev
+remote-dev:
+	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Robot --remote --port 8270 --port-file operaton-remote.port"
 
-.PHONY: wheel
-wheel:
-	cd python && pip wheel --no-deps -w dist .
+# ─── Python proxy wheel ──────────────────────────────────────────────────────
 
 .PHONY: install-proxy
 install-proxy:

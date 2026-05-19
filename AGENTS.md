@@ -87,14 +87,15 @@ you are already inside the shell.)
 Use `devenv shell --no-eval-cache -- <cmd>` for one-shot invocations. Inside an interactive `devenv shell` you can run the commands directly.
 
 ```sh
-devenv shell --no-eval-cache -- mvn -q -DskipTests package   # build
+devenv shell --no-eval-cache -- mvn -q -DskipTests package   # thin JAR (dev)
+devenv shell --no-eval-cache -- make dist-fat                # standard fat JAR
+devenv shell --no-eval-cache -- make dist-vasara             # Vasara fat JAR
 devenv shell --no-eval-cache -- mvn test                     # run all JUnit + Robot suites
-devenv shell --no-eval-cache -- mvn -Pshade package -DskipTests  # fat JAR
-devenv shell --no-eval-cache -- mvn -Pnative package         # native image (slow)
+devenv shell --no-eval-cache -- make dist-native             # native binary (slow)
 devenv shell --no-eval-cache -- make format                  # google-java-format
-devenv shell --no-eval-cache -- make libspec                 # generate Operaton.libspec
+devenv shell --no-eval-cache -- make dist-libspec            # generate Operaton.libspec
 devenv shell --no-eval-cache -- make remote                  # start Remote server on :8270
-devenv shell --no-eval-cache -- make wheel                   # build CPython proxy wheel
+devenv shell --no-eval-cache -- make dist-wheel              # build CPython proxy wheel
 ```
 
 The first build downloads Robot Framework 7.1.1 into the GraalPy VFS via `graalpy-maven-plugin`; expect several minutes on a cold cache.
@@ -105,8 +106,8 @@ The first build downloads Robot Framework 7.1.1 into the GraalPy VFS via `graalp
 # Via Maven classpath runner:
 devenv shell --no-eval-cache -- make robot SUITE=src/test/resources/example/Example.robot
 
-# Via fat JAR (faster after first build):
-devenv shell --no-eval-cache -- make run-shade SUITE=src/test/resources/example/Example.robot
+# Via fat JAR (faster after first dist-fat):
+devenv shell --no-eval-cache -- make run SUITE=src/test/resources/example/Example.robot
 ```
 
 ### Logging
@@ -118,31 +119,35 @@ To see full Operaton engine output during a dev run, pass `--loglevel DEBUG`:
 devenv shell --no-eval-cache -- make robot SUITE=src/test/resources/example/Example.robot -- --loglevel DEBUG
 
 # Via fat JAR
-devenv shell --no-eval-cache -- make run-shade SUITE="--loglevel DEBUG src/test/resources/example/Example.robot"
+devenv shell --no-eval-cache -- make run SUITE="--loglevel DEBUG src/test/resources/example/Example.robot"
 ```
 
 ### Makefile target reference
 
 | Target | Description |
 |---|---|
-| `build` | `mvn package -DskipTests` |
-| `shade` | Fat JAR: `mvn -Pshade package -DskipTests` |
-| `native` | Native image: `mvn -Pnative package` |
+| `build` | Thin JAR: `mvn package -DskipTests` (dev/test classpath only) |
+| `dist-fat` | **Standard fat JAR** (default deliverable): `-Pshade package -DskipTests` |
+| `dist-vasara` | Vasara fat JAR (includes `fi.jyu.vasara.*`): `-Pshade-vasara package -DskipTests` |
+| `dist-native` | Native binary (GraalVM native-image; slow): `-Pnative package` |
+| `dist-wheel` | CPython proxy wheel under `python/dist/` |
+| `dist-docs` | Generate `docs/Operaton.html` keyword reference |
+| `dist-libspec` | Generate `docs/Operaton.libspec` for RobotCode LSP |
 | `clean` | `mvn clean` |
-| `test` | All JUnit + Robot suites via `mvn test` |
+| `test` | All JUnit + Robot suites (Nix-aware: uses `-Pnix` in devenv) |
 | `check` | `mvn verify` (test + integration checks) |
-| `robot` / `run` | Run a single suite via Maven classpath runner (`SUITE=path/to/Suite.robot`) |
-| `run-shade` | Run a single suite via fat JAR (`SUITE=...`) |
-| `run-native` | Run via native binary (`SUITE=...`) |
-| `watch` | Rebuild VFS on `.py` changes; re-run via Maven on any change |
-| `watch-shade` | Persistent GraalPy context; re-run on any change (~1 s) — fastest dev loop |
-| `watch-native` | Re-run via native binary on `.robot`/`.bpmn`/`.dmn` changes |
-| `remote` | Long-running Remote server on `:8270` via Maven classpath |
-| `remote-shade` | Long-running Remote server on `:8270` via fat JAR |
-| `libspec` | Generate `docs/Operaton.libspec` for RobotCode LSP |
-| `docs` | Generate `docs/Operaton.html` keyword reference |
+| `run` | Run a suite via fat JAR (`SUITE=path/to/Suite.robot`) |
+| `run-vasara` | Run a suite via Vasara JAR |
+| `run-native` | Run a suite via native binary |
+| `robot` | Run a suite via Maven classpath runner (no pre-built JAR needed) |
+| `watch` | Fat JAR in-process watcher, re-run on any change (~1 s) — fastest loop |
+| `watch-vasara` | Vasara JAR in-process watcher |
+| `watch-dev` | Maven runner watcher, rebuilds VFS on `.py` changes |
+| `watch-native` | Native binary watcher (`.py` changes require `dist-native` manually) |
+| `remote` | Long-running Remote server on `:8270` via fat JAR |
+| `remote-vasara` | Long-running Remote server via Vasara JAR |
+| `remote-dev` | Long-running Remote server via Maven classpath |
 | `format` | `google-java-format` all Java source files |
-| `wheel` | Build CPython proxy wheel under `python/dist/` |
 | `install-proxy` | `pip install -e python/` (editable install) |
 
 ## Conventions
@@ -180,13 +185,15 @@ devenv shell --no-eval-cache -- make run-shade SUITE="--loglevel DEBUG src/test/
 | Component | Version |
 |---|---|
 | GraalPy | 25.0.3 |
-| Operaton BPM | 1.0.3 |
+| Operaton BPM | 2.1.0 |
 | Spring Boot (BOM only) | 3.3.3 |
 | Robot Framework | 7.1.1 (bundled into VFS at build time) |
 | JUnit Jupiter | 5.10.2 |
 | AssertJ | 3.25.3 |
 | Java source/target | 17 |
 | Runtime JDK (devenv) | 21 |
+
+For instructions on upgrading any of the above, see [UPGRADE.md](UPGRADE.md).
 
 ## Things to avoid
 
