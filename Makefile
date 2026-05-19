@@ -15,16 +15,32 @@ all: build
 
 # ─── Build targets ───────────────────────────────────────────────────────────
 
+# GraalPy's bundled sysconfig.py is missing try/except ImportError in
+# _init_posix(), which causes ensurepip to fail with
+# "No module named '_sysconfigdata__linux_x86_64-linux-gnu'".
+# This target pre-creates a stub module in any cached GraalPy python-home
+# directories so that ensurepip can succeed.
+# On a fresh machine the first build still fails (cache not yet populated);
+# run 'make build' a second time and it will succeed.
+_SYSCONFIGDATA_STUB := build_time_vars = {'SOABI': 'cpython-312-x86_64-linux-gnu', 'EXT_SUFFIX': '.cpython-312-x86_64-linux-gnu.so'}
+.PHONY: _fix-graalpy-sysconfig
+_fix-graalpy-sysconfig:
+	@for d in $(HOME)/.cache/org.graalvm.polyglot/python/python-home/*/lib/python3.12; do \
+	  if [ -d "$$d" ] && [ ! -f "$$d/_sysconfigdata__linux_x86_64-linux-gnu.py" ]; then \
+	    printf '$(value _SYSCONFIGDATA_STUB)\n' > "$$d/_sysconfigdata__linux_x86_64-linux-gnu.py"; \
+	  fi; \
+	done; true
+
 .PHONY: build
-build:
+build: _fix-graalpy-sysconfig
 	mvn package -DskipTests
 
 .PHONY: shade
-shade:
+shade: _fix-graalpy-sysconfig
 	mvn -Pshade package -DskipTests
 
 .PHONY: shade-vasara
-shade-vasara:
+shade-vasara: _fix-graalpy-sysconfig
 	mvn -Pshade-vasara package -DskipTests
 
 .PHONY: native

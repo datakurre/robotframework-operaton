@@ -7,9 +7,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * Integration test for task name resolution: keywords that accept a task
- * definition key also accept the human-readable task name when exactly one
- * task with that name exists on the process instance.
+ * Integration test for task name resolution: keywords that accept a task definition key also accept
+ * the human-readable task name when exactly one task with that name exists on the process instance.
  */
 class TaskNameResolutionTest {
 

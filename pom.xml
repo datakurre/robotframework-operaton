@@ -10,7 +10,7 @@
   <description>GraalPy-based Robot Framework test runner for Operaton BPM processes</description>
 
   <properties>
-    <graalpy.version>25.0.2</graalpy.version>
+    <graalpy.version>25.0.3</graalpy.version>
     <graalpy.edition>python-community</graalpy.edition>
     <operaton.version>2.1.0</operaton.version>
     <spring-boot.version>3.3.3</spring-boot.version>
@@ -229,12 +229,12 @@
     <profile>
       <id>shade</id>
       <dependencies>
-        <!-- Engine core is test-scoped in default config; pull it into runtime
-             scope so the shade plugin bundles it into the fat JAR. -->
+        <!-- Engine core is provided in default config; promote to compile scope
+             so it is both on the compile classpath and bundled by the shade plugin. -->
         <dependency>
           <groupId>org.operaton.bpm</groupId>
           <artifactId>operaton-engine</artifactId>
-          <scope>runtime</scope>
+          <scope>compile</scope>
         </dependency>
         <!-- assertj-core is declared test-scoped in the project; override to
              runtime so shade includes it (needed by operaton-bpm-assert). -->
@@ -296,11 +296,11 @@
     <profile>
       <id>shade-vasara</id>
       <dependencies>
-        <!-- Same runtime promotions as the shade profile. -->
+        <!-- Same scope promotions as the shade profile. -->
         <dependency>
           <groupId>org.operaton.bpm</groupId>
           <artifactId>operaton-engine</artifactId>
-          <scope>runtime</scope>
+          <scope>compile</scope>
         </dependency>
         <dependency>
           <groupId>org.assertj</groupId>

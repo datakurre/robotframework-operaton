@@ -17,6 +17,11 @@ let
     sha256 = "1bqxfvvb9d88lp6bl3gx8m0aznsns0rfmhc0sx3lfx8fi5dhq8jc";
   };
 
+  robotremoteserverWheel = fetchurl {
+    url = "https://files.pythonhosted.org/packages/ce/77/532abf69fe4107cf0dea47c84816cb4ed65e15f376cee93690fe89b0ec78/robotremoteserver-1.1.1-py2.py3-none-any.whl";
+    sha256 = "sha256-o0QFHU4r9DXglwNl1AUc2hMQA5Xgcv+Iy3QPnDYyBr8=";
+  };
+
   # Exclude directories not needed for the Maven build.
   filteredSrc = builtins.filterSource (
     path: _type:
@@ -89,7 +94,7 @@ let
     outputHashMode = "recursive";
     # Run nix build with the placeholder hash once; replace with the hash
     # printed in the "got:" line of the resulting error.
-    outputHash = "sha256-Q6RXgVVW1THkLVqIxqELHQikAMaJCcIM7ANMZd/7I18=";
+    outputHash = "sha256-u8iF8UqSlBHtFLwFi8rikr6UtpHE612Pj/wUfF+s3BE=";
   };
 in
 stdenv.mkDerivation rec {
@@ -111,13 +116,13 @@ stdenv.mkDerivation rec {
 
     VFSDIR=src/main/resources/org.graalvm.python.vfs
 
-    # 1. Build GraalPy home/ from python-resources-25.0.2.jar
+    # 1. Build GraalPy home/ from python-resources-25.0.3.jar
     # The jar contains:
     #   META-INF/resources/libpython/   -> VFS home/lib-python/  (Python stdlib)
     #   META-INF/resources/libgraalpy/  -> VFS home/lib-graalpython/ (GraalPy builtins)
-    # GraalPy 25.0.2 ships native .so files as Truffle internal resources
+    # GraalPy 25.0.3 ships native .so files as Truffle internal resources
     # (resolved at runtime via InternalResourceCache), not in VFS home/.
-    PYTHON_RES_JAR=$(find ${mavenRepository} -name "python-resources-25.0.2.jar" | head -1)
+    PYTHON_RES_JAR=$(find ${mavenRepository} -name "python-resources-25.0.3.jar" | head -1)
     EXTRACT_TMP=$(mktemp -d)
     (cd "$EXTRACT_TMP" && jar xf "$PYTHON_RES_JAR" \
       META-INF/resources/libpython \
@@ -127,10 +132,10 @@ stdenv.mkDerivation rec {
     cp -r "$EXTRACT_TMP/META-INF/resources/libgraalpy" "$VFSDIR/home/lib-graalpython"
     rm -rf "$EXTRACT_TMP"
     # tagfile tells graalpy-maven-plugin (if ever re-run) that home/ is current.
-    printf '25.0.2\ninclude:.*' > "$VFSDIR/home/tagfile"
+    printf '25.0.3\ninclude:.*' > "$VFSDIR/home/tagfile"
 
     # 2. Build venv/ from pre-fetched wheels
-    # GraalPy 25.0.2 uses Python 3.12.  Wheels are ZIP archives; jar xf
+    # GraalPy 25.0.3 uses Python 3.12.  Wheels are ZIP archives; jar xf
     # extracts them without requiring unzip in the Nix sandbox.
     VENV_SITE="$VFSDIR/venv/lib/python3.12/site-packages"
     mkdir -p "$VENV_SITE"
@@ -145,6 +150,12 @@ stdenv.mkDerivation rec {
     (cd "$WHEEL_TMP" && jar xf ${pythonlibcoreWheel})
     cp -r "$WHEEL_TMP/robotlibcore"                                    "$VENV_SITE/"
     cp -r "$WHEEL_TMP/robotframework_pythonlibcore-4.5.0.dist-info"    "$VENV_SITE/"
+    rm -rf "$WHEEL_TMP"
+
+    WHEEL_TMP=$(mktemp -d)
+    (cd "$WHEEL_TMP" && jar xf ${robotremoteserverWheel})
+    cp "$WHEEL_TMP/robotremoteserver.py"                               "$VENV_SITE/"
+    cp -r "$WHEEL_TMP/robotremoteserver-1.1.1.dist-info"               "$VENV_SITE/"
     rm -rf "$WHEEL_TMP"
 
     # Minimal pyvenv.cfg - only the fields GraalPy checks at runtime.

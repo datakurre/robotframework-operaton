@@ -6,7 +6,7 @@ Guidance for coding agents working in this repository.
 
 - **Name:** `robotframework-operaton` (Maven coordinates: `org.operaton.bpm.extension.robot:operaton-bpm-extension-robot:1.0-SNAPSHOT`)
 - **Purpose:** A standalone Robot Framework library + runner for acceptance-testing Operaton BPM processes and DMN decisions, built on GraalPy. Includes a CPython proxy wheel for RobotCode/VS Code integration.
-- **Language mix:** Java 17 source/target (JDK 21 runtime), Python via GraalPy 25.0.2, Robot Framework 7.1.1, CPython proxy package.
+- **Language mix:** Java 17 source/target (JDK 21 runtime), Python via GraalPy 25.0.3, Robot Framework 7.1.1, CPython proxy package.
 - **Status:** Single-module, no parent pom, no monorepo dependency.
 
 ## Architecture
@@ -179,7 +179,7 @@ devenv shell --no-eval-cache -- make run-shade SUITE="--loglevel DEBUG src/test/
 
 | Component | Version |
 |---|---|
-| GraalPy | 25.0.2 |
+| GraalPy | 25.0.3 |
 | Operaton BPM | 1.0.3 |
 | Spring Boot (BOM only) | 3.3.3 |
 | Robot Framework | 7.1.1 (bundled into VFS at build time) |

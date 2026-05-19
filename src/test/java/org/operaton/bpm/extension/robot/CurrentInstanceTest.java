@@ -7,10 +7,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * Integration test for the current-instance state management keywords:
- * Start Instance stores the current instance ID and business key; subsequent
- * keywords (Should Have Task, Complete Task, Should Be Ended, etc.) default
- * to that instance without needing an explicit process_instance_id argument.
+ * Integration test for the current-instance state management keywords: Start Instance stores the
+ * current instance ID and business key; subsequent keywords (Should Have Task, Complete Task,
+ * Should Be Ended, etc.) default to that instance without needing an explicit process_instance_id
+ * argument.
  */
 class CurrentInstanceTest {
 
