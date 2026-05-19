@@ -77,15 +77,52 @@ class ProcessAssertions:
 
     @keyword
     @except_interop_exception
-    def should_have_n_active_tasks(self, expected_count: Any = 0, process_instance_id: str = ""):
-        """Asserts that the process instance has exactly N active tasks. Defaults to the current instance."""
+    def should_have_active(self, activity_id: str = "", name: str = "", times: int = 1, process_instance_id: str = ""):
+        """Asserts that the process instance has exactly *times* currently active (unfinished) activity instances.
+
+        Filter by *activity_id* (BPMN element ID) or *name* (human-readable element name).
+        Omit both to count all currently active activities. *times* defaults to 1.
+        Defaults to the current instance in scope.
+        """
         assert self.ctx.engine, "No engine"
         instance_id = self.ctx._resolve_instance_id(process_instance_id)
-        task_service = self.ctx.engine.getTaskService()
-        tasks = task_service.createTaskQuery() \
-            .processInstanceId(instance_id).list()
-        actual = int(tasks.size())
-        expected = int(expected_count)
-        assert actual == expected, (
-            f"Expected {expected} active tasks, but found {actual}"
+        history = self.ctx.engine.getHistoryService()
+        query = (history.createHistoricActivityInstanceQuery()
+                 .processInstanceId(instance_id)
+                 .unfinished())
+        if activity_id:
+            query = query.activityId(activity_id)
+        if name:
+            query = query.activityName(name)
+        actual = int(query.count())
+        assert actual == int(times), (
+            f"Expected {int(times)} active activity instance(s)"
+            + (f" for activity '{activity_id or name}'" if activity_id or name else "")
+            + f", but found {actual}"
+        )
+
+    @keyword
+    @except_interop_exception
+    def should_have_completed(self, activity_id: str = "", name: str = "", times: int = 1, process_instance_id: str = ""):
+        """Asserts that the process instance has exactly *times* completed activity instances.
+
+        Filter by *activity_id* (BPMN element ID) or *name* (human-readable element name).
+        Omit both to count all completed activities. *times* defaults to 1.
+        Defaults to the current instance in scope.
+        """
+        assert self.ctx.engine, "No engine"
+        instance_id = self.ctx._resolve_instance_id(process_instance_id)
+        history = self.ctx.engine.getHistoryService()
+        query = (history.createHistoricActivityInstanceQuery()
+                 .processInstanceId(instance_id)
+                 .finished())
+        if activity_id:
+            query = query.activityId(activity_id)
+        if name:
+            query = query.activityName(name)
+        actual = int(query.count())
+        assert actual == int(times), (
+            f"Expected {int(times)} completed activity instance(s)"
+            + (f" for activity '{activity_id or name}'" if activity_id or name else "")
+            + f", but found {actual}"
         )
