@@ -90,6 +90,10 @@ $(BPMN_RENDER_JS): $(JS_SOURCES)
 # Nix-built fat JAR into target/classes/ before running tests.  The resources
 # plugin only copies src/main/resources/ and does NOT delete extra files in
 # target/classes/, so the extracted venv survives the process-resources phase.
+# _nix-venv-bootstrap: used only by flake.nix / 'nix build' sandbox (no network).
+# Extracts the pre-built GraalPy VFS (venv+home) from the Nix-store JAR into
+# target/classes/ and activates the -Pnix Maven profile (which skips the
+# graalpy-maven-plugin download step).  Not needed for normal development.
 .PHONY: _nix-venv-bootstrap
 _nix-venv-bootstrap:
 	@NIX_JAR=$$(grep -o '/nix/store/[^ ]*\.jar' result/bin/operaton-robot 2>/dev/null); \
@@ -112,22 +116,12 @@ _nix-venv-bootstrap:
 	done
 
 .PHONY: test
-ifdef IN_NIX_SHELL
-test: _nix-venv-bootstrap
-	mvn -Pnix test
-else
 test:  ## Run all JUnit + Robot suites
 	mvn test
-endif
 
 .PHONY: check
-ifdef IN_NIX_SHELL
-check: _nix-venv-bootstrap
-	mvn -Pnix verify
-else
 check:  ## mvn verify
 	mvn verify
-endif
 
 ##@ Run  (SUITE=path/to/Suite.robot)
 
@@ -236,3 +230,9 @@ install-proxy:  ## pip install -e python/
 .PHONY: shell
 shell:  ## devenv shell
 	devenv shell
+
+devenv-%:  ## Run make target inside devenv shell (e.g. devenv-test)
+	devenv shell $(DEVENV_OPTIONS) -- $(MAKE) $*
+
+nix-%:  ## Run make target inside devenv shell (e.g. nix-test)
+	devenv shell $(DEVENV_OPTIONS) -- $(MAKE) $*
