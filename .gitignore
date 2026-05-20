@@ -4,6 +4,7 @@
 .vscode/
 /result
 __pycache__/
+operaton-remote.port
 dependency-reduced-pom.xml
 devenv.local.nix
 devenv.local.yaml

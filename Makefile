@@ -11,11 +11,13 @@ DMN_RENDER_JS := src/main/resources/dmn-render.js
 JS_SOURCES := src/main/js/src/render.mjs src/main/js/package.json
 
 .PHONY: all
-all: dist-fat
+all: help
 
-# ─── Build targets ───────────────────────────────────────────────────────────
-# build   — thin JAR (dev / test classpath; not a distributable)
-# dist-*  — distributable deliverables (fat JARs, native binary, wheel, docs)
+.PHONY: help
+help:  ## Show this help
+	@awk 'BEGIN {FS = ":.*##"; printf "Usage: make [TARGET] [SUITE=path/to/Suite.robot]\n"} /^[a-zA-Z][a-zA-Z0-9_-]*:.*?##/ { printf "  %-18s %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) }' $(MAKEFILE_LIST)
+
+##@ Build
 
 # GraalPy's bundled sysconfig.py is missing try/except ImportError in
 # _init_posix(), which causes ensurepip to fail with
@@ -34,45 +36,39 @@ _fix-graalpy-sysconfig:
 	done; true
 
 .PHONY: build
-build: _fix-graalpy-sysconfig
+build: _fix-graalpy-sysconfig  ## Thin JAR (dev/test classpath; not distributable)
 	mvn package -DskipTests
 
-# Primary deliverable: standard fat JAR (all core keywords, no Vasara classes).
 .PHONY: dist-fat
-dist-fat: _fix-graalpy-sysconfig
+dist-fat: _fix-graalpy-sysconfig  ## Standard fat JAR [primary deliverable]
 	mvn -Pshade package -DskipTests
 
-# Secondary deliverable: Vasara fat JAR (includes fi.jyu.vasara.* form customizations).
 .PHONY: dist-vasara
-dist-vasara: _fix-graalpy-sysconfig
+dist-vasara: _fix-graalpy-sysconfig  ## Vasara fat JAR (includes fi.jyu.vasara.* form classes)
 	mvn -Pshade-vasara package -DskipTests
 
-# Secondary deliverable: native binary (GraalVM native-image; slow to build).
 .PHONY: dist-native
-dist-native:
+dist-native:  ## Native binary via GraalVM native-image (slow)
 	mvn -Pnative package
 
-# CPython proxy wheel (robotframework-operaton).
 .PHONY: dist-wheel
-dist-wheel:
+dist-wheel:  ## CPython proxy wheel → python/dist/
 	cd python && pip wheel --no-deps -w dist .
 
-# Keyword HTML reference (docs/Operaton.html).
 .PHONY: dist-docs
-dist-docs:
+dist-docs:  ## Keyword HTML reference → docs/Operaton.html
 	mkdir -p docs
 	mvn -q -DskipTests package
 	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Libdoc docs/Operaton.html"
 
-# Machine-readable keyword spec for RobotCode LSP (docs/Operaton.libspec).
 .PHONY: dist-libspec
-dist-libspec:
+dist-libspec:  ## Keyword spec for RobotCode LSP → docs/Operaton.libspec
 	mkdir -p docs
 	mvn -q -DskipTests package
 	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Libdoc docs/Operaton.libspec"
 
 .PHONY: clean
-clean:
+clean:  ## mvn clean
 	mvn clean
 
 # ─── JS bundle ───────────────────────────────────────────────────────────────
@@ -88,7 +84,7 @@ $(BPMN_RENDER_JS): $(JS_SOURCES)
 # The dmn-render.js script is self-contained (no external dependencies);
 # it is maintained directly in src/main/resources/ and does not need bundling.
 
-# ─── Test targets ────────────────────────────────────────────────────────────
+##@ Test / verify
 
 # In a Nix/devenv shell: extract pre-built GraalPy VFS (venv + home) from the
 # Nix-built fat JAR into target/classes/ before running tests.  The resources
@@ -120,7 +116,7 @@ ifdef IN_NIX_SHELL
 test: _nix-venv-bootstrap
 	mvn -Pnix test
 else
-test:
+test:  ## Run all JUnit + Robot suites
 	mvn test
 endif
 
@@ -129,64 +125,40 @@ ifdef IN_NIX_SHELL
 check: _nix-venv-bootstrap
 	mvn -Pnix verify
 else
-check:
+check:  ## mvn verify
 	mvn verify
 endif
 
-# ─── Run targets ─────────────────────────────────────────────────────────────
-# SUITE: path to .robot file
-#   e.g. make run SUITE=src/test/resources/example/Example.robot
-#
-# run        — fat JAR (default; fast after first dist-fat)
-# run-vasara — Vasara fat JAR
-# run-native — native binary
-# robot      — Maven classpath runner (no pre-built JAR needed)
+##@ Run  (SUITE=path/to/Suite.robot)
 
 .PHONY: run
-run:
+run:  ## Fat JAR runner
 	$(JAVA) -jar $(JAR_FAT) $(SUITE)
 
 .PHONY: run-vasara
-run-vasara:
+run-vasara:  ## Vasara fat JAR runner
 	$(JAVA) -jar $(JAR_VASARA) $(SUITE)
 
 .PHONY: run-native
-run-native:
+run-native:  ## Native binary runner
 	./$(NATIVE_BIN) $(SUITE)
 
 .PHONY: robot
-robot:
+robot:  ## Maven classpath runner (no pre-built JAR needed)
 	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Robot ${SUITE}"
 
-# ─── Watch mode ──────────────────────────────────────────────────────────────
-# Watches for .robot/.bpmn/.dmn/.py changes and re-runs on every save.
-#
-#   make watch                             — fat JAR in-process watcher, all suites (~1 s)
-#   make watch SUITE=path/to.robot         — fat JAR in-process watcher, one suite
-#   make watch-vasara                      — Vasara fat JAR watcher
-#   make watch-dev                         — Maven classpath runner, rebuilds VFS on .py changes
-#   make watch-native                      — native binary runner
-#
-# watch uses a persistent GraalPy context: the JVM starts once and Robot
-# Framework is re-invoked in the same context on each file change (~1s re-run).
-# On .py changes the context is recreated (~2-3s) and Python source is loaded
-# from disk (no fat JAR rebuild needed during watch).
-#
-# .py changes:
-#   watch        → context recreation only (~2-3s), disk-loaded Python
-#   watch-dev    → VFS rebuild via mvn process-resources, then re-run
-#   watch-native → warning only; run 'make dist-native' manually to bake .py changes in
+##@ Watch  (SUITE= optional; .py changes recreate context in ~2-3 s)
 
 .PHONY: watch
-watch:
+watch:  ## Fat JAR in-process watcher (~1 s re-run)
 	$(JAVA) -jar $(JAR_FAT) --watch $(or $(SUITE),src/test/resources/example)
 
 .PHONY: watch-vasara
-watch-vasara:
+watch-vasara:  ## Vasara fat JAR watcher
 	$(JAVA) -jar $(JAR_VASARA) --watch $(or $(SUITE),src/test/resources/example)
 
 .PHONY: watch-dev
-watch-dev:
+watch-dev:  ## Maven classpath watcher; rebuilds VFS on .py changes
 	@echo "Watching: $(WATCH_PATHS)"
 	@echo "Suite filter: $(or $(SUITE),<all>)"
 	@echo "Press Ctrl+C to stop."
@@ -211,7 +183,7 @@ watch-dev:
 	done
 
 .PHONY: watch-native
-watch-native:
+watch-native:  ## Native binary watcher (.py changes require dist-native)
 	@echo "Watching: $(WATCH_PATHS)"
 	@echo "Suite: $(or $(SUITE),src/test/resources/example)"
 	@echo "Runner: native binary  (.py changes require 'make dist-native' manually)"
@@ -233,35 +205,34 @@ watch-native:
 	  echo "─────────────────────────────────────────────"; \
 	done
 
-# ─── Utility targets ─────────────────────────────────────────────────────────
+##@ Remote server  (XML-RPC on :8270)
 
-.PHONY: format
-format:
-	google-java-format -i $(JAVA_FILES)
-
-# ─── Remote server ───────────────────────────────────────────────────────────
 # Starts the Operaton keyword library as a Robot Framework Remote Server.
 # Other tools (RobotCode, plain CPython robot) connect via:
 #   Library  Remote  http://127.0.0.1:<port>  WITH NAME  Operaton
 
 .PHONY: remote
-remote:
+remote:  ## Fat JAR
 	$(JAVA) -jar $(JAR_FAT) --remote --port 8270 --port-file operaton-remote.port
 
 .PHONY: remote-vasara
-remote-vasara:
+remote-vasara:  ## Vasara fat JAR
 	$(JAVA) -jar $(JAR_VASARA) --remote --port 8270 --port-file operaton-remote.port
 
 .PHONY: remote-dev
-remote-dev:
+remote-dev:  ## Maven classpath runner
 	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Robot --remote --port 8270 --port-file operaton-remote.port"
 
-# ─── Python proxy wheel ──────────────────────────────────────────────────────
+##@ Misc
+
+.PHONY: format
+format:  ## google-java-format all Java source files
+	google-java-format -i $(JAVA_FILES)
 
 .PHONY: install-proxy
-install-proxy:
+install-proxy:  ## pip install -e python/
 	pip install -e python/
 
 .PHONY: shell
-shell:
+shell:  ## devenv shell
 	devenv shell

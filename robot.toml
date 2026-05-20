@@ -22,8 +22,8 @@ ROBOTCODE_LOAD_LIBRARY_TIMEOUT = "120"
 # instead of spawning a new JVM for every test run (saves 20-30 s per run).
 #
 # Start the server once:
-#   make remote-shade          # fat JAR, port 8270
-#   # or: make remote          # Maven classpath runner
+#   make remote                # fat JAR, port 8270
+#   # or: make remote-dev      # Maven classpath runner
 #
 # Then uncomment the line below:
 # OPERATON_REMOTE = "http://127.0.0.1:8270"
