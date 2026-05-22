@@ -201,6 +201,11 @@ watch-native:  ## Native binary watcher (.py changes require dist-native)
 
 ##@ Remote server  (XML-RPC on :8270)
 
+.PHONY: mvn2nix.lock
+mvn2nix.lock:
+	nix run gitlab:vasara-bpm/mvn2nix -- pom.xml --goals=dependency:go-offline > mvn2nix.lock
+
+# ─── Remote server ───────────────────────────────────────────────────────────
 # Starts the Operaton keyword library as a Robot Framework Remote Server.
 # Other tools (RobotCode, plain CPython robot) connect via:
 #   Library  Remote  http://127.0.0.1:<port>  WITH NAME  Operaton

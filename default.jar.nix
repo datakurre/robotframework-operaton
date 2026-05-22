@@ -94,7 +94,7 @@ let
     outputHashMode = "recursive";
     # Run nix build with the placeholder hash once; replace with the hash
     # printed in the "got:" line of the resulting error.
-    outputHash = "sha256-u8iF8UqSlBHtFLwFi8rikr6UtpHE612Pj/wUfF+s3BE=";
+    outputHash = "sha256-P82qdVaOiBSDwDFU6BFCYKLyDYBOwv597afMNgVoxZ4=";
   };
 in
 stdenv.mkDerivation rec {
