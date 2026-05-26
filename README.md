@@ -149,6 +149,25 @@ By default the CPython proxy spawns a fresh JVM for every test run (~20–30 s).
 For rapid edit-run cycles, keep one Remote server running and point the proxy
 at it — each **Run Test** then connects instantly.
 
+#### Option A: VS Code Command (recommended)
+
+Use the **[vscode-operaton-robotframework](https://gitlab.com/vasara-bpm/vscode-operaton-robotframework)** companion extension:
+
+1. Open the Command Palette (`Ctrl+Shift+P`)
+2. Run **Operaton Robot: Start Remote Server**
+
+The extension:
+- Spawns the JVM server in a visible VS Code terminal (you can see logs)
+- Auto-selects a free port (no conflicts)
+- Updates `robot.toml` with `OPERATON_REMOTE = "http://127.0.0.1:<port>"` automatically
+- Shows a status bar indicator: `$(server-process) Operaton :PORT` — click it to stop
+
+When you're done, click the status bar item or run **Operaton Robot: Stop Remote Server**
+from the Command Palette. The extension removes `OPERATON_REMOTE` from `robot.toml`,
+so subsequent runs fall back to auto-spawning.
+
+#### Option B: Manual terminal
+
 **Start the server once (keep the terminal open):**
 
 ```sh
@@ -171,8 +190,12 @@ Or set it as a shell variable:
 OPERATON_REMOTE=http://127.0.0.1:8270 robot path/to/Suite.robot
 ```
 
+#### How it works
+
 The engine lifecycle is still managed per-test via `Setup Process Engine` /
 `Teardown Process Engine` — the persistent server does not affect test isolation.
+Each test gets a fresh in-memory engine; the JVM process simply stays warm
+between runs, eliminating GraalPy startup overhead.
 
 ---
 

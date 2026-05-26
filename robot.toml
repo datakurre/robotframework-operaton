@@ -17,15 +17,17 @@ OPERATON_JAR = "target/operaton-bpm-extension-robot-1.0-SNAPSHOT-fat.jar"
 # GraalPy JVM startup takes ~20-30s; raise RobotCode's library-load timeout accordingly.
 ROBOTCODE_LOAD_LIBRARY_TIMEOUT = "120"
 # ── Faster iteration (optional) ─────────────────────────────────────────────
-# If you keep a long-running Remote server running in a terminal
-# (e.g. `make remote-shade`), set OPERATON_REMOTE to connect instantly
-# instead of spawning a new JVM for every test run (saves 20-30 s per run).
+# If you keep a long-running Remote server running, set OPERATON_REMOTE to
+# connect instantly instead of spawning a new JVM for every test run (saves
+# 20-30 s per run).
 #
-# Start the server once:
-#   make remote                # fat JAR, port 8270
-#   # or: make remote-dev      # Maven classpath runner
+# Option A — VS Code Command (recommended):
+#   Open Command Palette → "Operaton Robot: Start Remote Server"
+#   (automatically manages server + robot.toml for you)
 #
-# Then uncomment the line below:
+# Option B — Manual terminal:
+#   java -jar lib/operaton-bpm-extension-robot-1.0-SNAPSHOT-fat.jar --remote --port 8270
+#   Then uncomment the line below:
 # OPERATON_REMOTE = "http://127.0.0.1:8270"
 
 [tool.robotcode-analyze]
