@@ -1,4 +1,4 @@
-JAVA := $(shell which java)
+JAVA = $(shell which java)
 JAVA_FILES := $(shell find . -name "*.java" -path "*/src/*" -not -path "./tmp/*" -type f)
 JAR := target/operaton-bpm-extension-robot-1.0-SNAPSHOT.jar
 JAR_FAT := target/operaton-bpm-extension-robot-1.0-SNAPSHOT-fat.jar
