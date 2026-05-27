@@ -1,13 +1,11 @@
 *** Settings ***
+Library     Operaton
+Library     Collections
 
-Library    Operaton
-Library    Collections
 
 *** Test Cases ***
-
 Get Activity History Returns Activity List
     [Setup]    Setup Process Engine
-    [Teardown]    Teardown Process Engine
     Deploy Resources    ${CURDIR}${/}multi-task-process.bpmn
     Start Instance    multi-task-process
     Log Bpmn Execution
@@ -23,20 +21,20 @@ Get Activity History Returns Activity List
     Dictionary Should Contain Key    ${first}    activityType
     Dictionary Should Contain Key    ${first}    canceled
     Dictionary Should Contain Key    ${first}    completed
+    [Teardown]    Teardown Process Engine
 
 Get Process Model Xml Returns Bpmn
     [Setup]    Setup Process Engine
-    [Teardown]    Teardown Process Engine
     Deploy Resources    ${CURDIR}${/}multi-task-process.bpmn
     Start Instance    multi-task-process
     ${def_id}=    Get Process Definition Id
     ${xml}=    Get Process Model Xml    ${def_id}
     Should Contain    ${xml}    bpmn:definitions
     Should Contain    ${xml}    multi-task-process
+    [Teardown]    Teardown Process Engine
 
 Get Process Definition Id Returns Id
     [Setup]    Setup Process Engine
-    [Teardown]    Teardown Process Engine
     Deploy Resources    ${CURDIR}${/}multi-task-process.bpmn
     Start Instance    multi-task-process
     Complete Task    task-a
@@ -44,31 +42,32 @@ Get Process Definition Id Returns Id
     ${def_id}=    Get Process Definition Id
     Should Not Be Empty    ${def_id}
     Should Contain    ${def_id}    multi-task-process
+    [Teardown]    Teardown Process Engine
 
 Log Bpmn Execution Logs Svg When Node Available
     [Documentation]    Logs an SVG image of the executed path.
     ...    If 'node' is not on PATH this keyword skips gracefully.
     [Setup]    Setup Process Engine
-    [Teardown]    Teardown Process Engine
     Deploy Resources    ${CURDIR}${/}multi-task-process.bpmn
     Start Instance    multi-task-process
     Complete Task    task-a
     Complete Task    task-b
     Log Bpmn Execution
+    [Teardown]    Teardown Process Engine
 
 Log Bpmn Partial Execution Only Task A Completed
     [Documentation]    Shows partial execution: task-a done, task-b still active.
     [Setup]    Setup Process Engine
-    [Teardown]    Teardown Process Engine
     Deploy Resources    ${CURDIR}${/}multi-task-process.bpmn
     Start Instance    multi-task-process
     Complete Task    task-a
     Log Bpmn Execution
+    [Teardown]    Teardown Process Engine
 
 Log Bpmn No Tasks Completed Yet
     [Documentation]    Shows an instance just started, both parallel tasks active.
     [Setup]    Setup Process Engine
-    [Teardown]    Teardown Process Engine
     Deploy Resources    ${CURDIR}${/}multi-task-process.bpmn
     Start Instance    multi-task-process
     Log Bpmn Execution
+    [Teardown]    Teardown Process Engine
