@@ -465,3 +465,18 @@ class Operaton(DynamicCore):
         self._current_instance_id = str(instance.getId())
         self._current_business_key = business_key
         return self._current_instance_id
+    
+    @keyword
+    @except_interop_exception
+    def move_instance_to(self, activity_id: str, process_instance_id: str = ""):
+        """Moves the execution of the process instance to the given activity.
+
+        Example usage:
+
+        | ${instance}=    Start Instance    my-process
+        | Move Instance To    ${instance}    Activity_10
+        | Should Have Task    Review Order    ${instance}
+        """
+        instance_id = self._resolve_instance_id(process_instance_id)
+        runtime = self.engine.getRuntimeService()
+        runtime.createProcessInstanceModification(instance_id).startBeforeActivity(activity_id).execute()
