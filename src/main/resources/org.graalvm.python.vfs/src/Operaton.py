@@ -331,6 +331,23 @@ class Operaton(DynamicCore):
 
     @keyword
     @except_interop_exception
+    def set_authenticated_user(self, user_id: str):
+        """Sets the authenticated user ID for the current thread.
+
+        Required for BPMN expressions that reference ``${authenticatedUserId}``.
+        Call this before ``Start Instance`` when the process uses the initiator
+        or checks the authenticated user in gateway conditions.
+
+        Example::
+
+            Set Authenticated User    alice
+            Start Instance With Variables    my-process    author=alice
+        """
+        assert self.engine, "No engine"
+        self.engine.getIdentityService().setAuthenticatedUserId(user_id)
+
+    @keyword
+    @except_interop_exception
     def should_have_task(self, name: str = "", process_instance_id: str = ""):
         """Asserts that the process instance has an active task.
 
