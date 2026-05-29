@@ -474,7 +474,7 @@ class Operaton(DynamicCore):
         Example usage:
 
         | ${instance}=    Start Instance    my-process
-        | Move Instance To    ${instance}    Activity_10
+        | Move Instance To    Activity_10   ${instance}
         | Should Have Task    Review Order    ${instance}
         """
         instance_id = self._resolve_instance_id(process_instance_id)
