@@ -468,6 +468,50 @@ class Operaton(DynamicCore):
     
     @keyword
     @except_interop_exception
+    def start_instance_before_activity(self, process_definition_key: str, activity_id: str, business_key: str = "", **variables: Any) -> str:
+        """Starts a process instance and places the token immediately before *activity_id*.
+
+        Behaves like Start Instance With Variables but positions the token before the
+        requested activity. Returns the started process instance id and stores it as
+        the current instance in scope.
+        """
+        assert self.engine, "No engine"
+        if not business_key:
+            business_key = str(uuid.uuid4())
+        runtime = self.engine.getRuntimeService()
+        builder = runtime.createProcessInstanceByKey(process_definition_key).businessKey(business_key)
+        if variables:
+            var_map = Variables.createVariables()
+            for name, value in variables.items():
+                var_map.putValue(name, value)
+            builder = builder.setVariables(var_map)
+
+        started = None
+        try:
+            started = builder.startBeforeActivity(activity_id).execute()
+        except Exception:
+            try:
+                started = builder.startBeforeActivity(activity_id).executeWithVariablesInReturn()
+            except Exception:
+                started = None
+
+        if started is not None:
+            try:
+                instance_id = str(started.getId())
+            except Exception:
+                instance_id = ""
+        else:
+            # Fall back to lookup by business key (assume uniqueness in tests)
+            pi = runtime.createProcessInstanceQuery().processInstanceBusinessKey(business_key).singleResult()
+            assert pi is not None, "Failed to start instance before activity and could not find it by businessKey"
+            instance_id = str(pi.getId())
+
+        self._current_instance_id = instance_id
+        self._current_business_key = business_key
+        return self._current_instance_id
+    
+    @keyword
+    @except_interop_exception
     def move_instance_to(self, activity_id: str, process_instance_id: str = ""):
         """Moves the execution of the process instance to the given activity.
 
@@ -479,4 +523,58 @@ class Operaton(DynamicCore):
         """
         instance_id = self._resolve_instance_id(process_instance_id)
         runtime = self.engine.getRuntimeService()
-        runtime.createProcessInstanceModification(instance_id).startBeforeActivity(activity_id).execute()
+
+        # Find active executions with an activity id
+        executions = runtime.createExecutionQuery().processInstanceId(instance_id).list()
+        active_activities = []
+        for i in range(int(executions.size())):
+            exe = executions.get(i)
+            try:
+                aid = exe.getActivityId()
+            except Exception:
+                aid = None
+            if aid:
+                active_activities.append(str(aid))
+
+        if len(active_activities) != 1:
+            raise AssertionError(
+                "move_instance_to requires exactly one active token at a single activity. "
+                f"Found {len(active_activities)} active activities: {active_activities}"
+            )
+
+        current_activity = active_activities[0]
+
+        modification = runtime.createProcessInstanceModification(instance_id)
+        modification.startBeforeActivity(activity_id)
+        # Cancel all active executions at the current activity to avoid parallel tokens after the move.
+        modification.cancelAllForActivity(current_activity)
+        modification.execute()
+
+    @keyword
+    @except_interop_exception
+    def get_active_activities(self, process_instance_id: str = "") -> list:
+        """Returns the IDs of all currently active (unfinished) activities.
+
+        Useful for diagnosing where the token is when a test gets stuck.
+
+        Example::
+
+            ${activities}=    Get Active Activities
+            Log    ${activities}
+        """
+        assert self.engine, "No engine"
+        instance_id = self._resolve_instance_id(process_instance_id)
+        history = self.engine.getHistoryService()
+        items = (history.createHistoricActivityInstanceQuery()
+                 .processInstanceId(instance_id)
+                 .unfinished()
+                 .list())
+        result = []
+        for i in range(int(items.size())):
+            item = items.get(i)
+            result.append({
+                "activityId": str(item.getActivityId()),
+                "activityName": str(item.getActivityName()) if item.getActivityName() else None,
+                "activityType": str(item.getActivityType()) if item.getActivityType() else None,
+            })
+        return result
