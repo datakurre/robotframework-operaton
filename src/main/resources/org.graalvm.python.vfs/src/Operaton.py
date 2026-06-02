@@ -486,25 +486,12 @@ class Operaton(DynamicCore):
                 var_map.putValue(name, value)
             builder = builder.setVariables(var_map)
 
-        started = None
-        try:
-            started = builder.startBeforeActivity(activity_id).execute()
-        except Exception:
-            try:
-                started = builder.startBeforeActivity(activity_id).executeWithVariablesInReturn()
-            except Exception:
-                started = None
-
-        if started is not None:
-            try:
-                instance_id = str(started.getId())
-            except Exception:
-                instance_id = ""
-        else:
-            # Fall back to lookup by business key (assume uniqueness in tests)
-            pi = runtime.createProcessInstanceQuery().processInstanceBusinessKey(business_key).singleResult()
-            assert pi is not None, "Failed to start instance before activity and could not find it by businessKey"
-            instance_id = str(pi.getId())
+        started = builder.startBeforeActivity(activity_id).execute()
+        assert started is not None, (
+            f"Engine returned no instance for activity '{activity_id}' "
+            f"in process '{process_definition_key}'"
+        )
+        instance_id = str(started.getId())
 
         self._current_instance_id = instance_id
         self._current_business_key = business_key
