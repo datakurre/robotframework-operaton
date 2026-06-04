@@ -1,6 +1,7 @@
 from functools import wraps
 from typing import Any
 
+import inspect
 import sys
 
 try:
@@ -51,4 +52,37 @@ def except_interop_exception(func):
             except Exception:
                 pass
             assert False, message
+    return wrapper
+
+
+def with_authenticated_user(func):
+    """Decorator that sets the authenticated user around a keyword call.
+
+    Looks for a ``user_id`` parameter in the decorated function's signature.
+    If the caller supplies a non-empty value it is set on the engine's
+    IdentityService before the call and cleared in a ``finally`` block
+    """
+    sig = inspect.signature(func)
+    param_names = list(sig.parameters.keys())
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        user_id = kwargs.get("user_id", "")
+        # try positional arguments if keyword not used
+        if not user_id and "user_id" in param_names:
+            idx = param_names.index("user_id")
+            if idx < len(args):
+                user_id = args[idx]
+
+        self_obj = args[0] if args else None
+        engine = getattr(self_obj, "engine", None) if self_obj else None
+
+        if user_id and engine:
+            engine.getIdentityService().setAuthenticatedUserId(user_id)
+        try:
+            return func(*args, **kwargs)
+        finally:
+            if user_id and engine:
+                engine.getIdentityService().setAuthenticatedUserId(None)
+
     return wrapper
