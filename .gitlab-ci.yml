@@ -28,8 +28,40 @@ test:
   <<: *maven-cache
   script:
     - mvn -q test
+  artifacts:
+    when: always
+    expire_in: 2 weeks
+    reports:
+      junit:
+        - target/surefire-reports/*.xml
+    paths:
+      - target/surefire-reports/
   except:
     - tags   # release job below covers tag pipelines
+
+robot-report:
+  stage: test
+  image: maven:3-eclipse-temurin-21
+  tags:
+    - executor-podman
+  <<: *maven-cache
+  script:
+    # Compile test classpath and run Robot suites with rich report output.
+    - mvn -q -DskipTests test-compile
+    - mkdir -p robot-results
+    - >
+      mvn -q exec:exec
+      -Dexec.executable=java
+      -Dexec.classpathScope=test
+      "-Dexec.args=-cp %classpath org.operaton.bpm.extension.robot.Robot --outputdir robot-results src/test/resources/example"
+  artifacts:
+    when: always
+    expire_in: 2 weeks
+    paths:
+      - robot-results/output.xml
+      - robot-results/log.html
+      - robot-results/report.html
+      - robot-results/*.png
 
 # ── Release ───────────────────────────────────────────────────────────────────
 # Triggered only on version tags (e.g. v1.0.0).
@@ -105,9 +137,15 @@ build-release:
       "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/operaton-robot/${VERSION}/$(basename $WHEEL)"
 
   artifacts:
+    when: always
+    expire_in: 2 weeks
     reports:
       # Export VERSION so the publish-release job can use it in the release block.
       dotenv: release.env
+      junit:
+        - target/surefire-reports/*.xml
+    paths:
+      - target/surefire-reports/
 
 publish-release:
   stage: release
