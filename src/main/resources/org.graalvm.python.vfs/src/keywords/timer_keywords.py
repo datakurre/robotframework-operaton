@@ -77,3 +77,32 @@ class TimerKeywords:
         for i in range(int(jobs.size())):
             job = jobs.get(i)
             management.executeJob(job.getId())
+
+    @keyword
+    @except_interop_exception
+    def execute_jobs(self, process_instance_id: str = "") -> int:
+        """Executes all pending jobs (async continuations, messages, timers) for the instance.
+
+         Useful for advancing past async intermediate events
+        (e.g. a mail-send throw event with asyncBefore=true).
+
+        Returns the number of jobs executed.
+
+        Example usage in Robot::
+
+            Execute Jobs
+            Execute Jobs    ${instance_id}
+        """
+        assert self.ctx.engine, "No engine"
+        management = self.ctx.engine.getManagementService()
+        query = management.createJobQuery()
+        effective_id = process_instance_id or self.ctx._current_instance_id
+        if effective_id:
+            query = query.processInstanceId(effective_id)
+        jobs = query.list()
+        count = int(jobs.size())
+        for i in range(count):
+            job = jobs.get(i)
+            management.executeJob(str(job.getId()))
+        return count
+

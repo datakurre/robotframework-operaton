@@ -7,7 +7,7 @@ import uuid
 
 from robotlibcore import DynamicCore
 
-from keywords.base import Variables, except_interop_exception
+from keywords.base import Variables, except_interop_exception, with_authenticated_user
 from keywords.process_assertions import ProcessAssertions
 from keywords.event_keywords import EventKeywords
 from keywords.history_keywords import HistoryKeywords
@@ -312,12 +312,19 @@ class Operaton(DynamicCore):
 
     @keyword
     @except_interop_exception
-    def start_instance(self, process_definition_key: str, business_key: str = "") -> str:
+    @with_authenticated_user
+    def start_instance(self, process_definition_key: str, business_key: str = "", user_id: str = "") -> str:
         """Starts a process instance and stores it as the current instance.
 
         If *business_key* is not provided, a UUID4 is generated automatically.
         The instance ID and business key are stored in test scope state and used
         automatically by subsequent keywords that accept ``process_instance_id``.
+
+        If *user_id* is provided, it is set as the authenticated user on the engine
+        before the instance is started. 
+        This is required for the engine to populate initiator variables defined on the BPMN start event
+        (e.g. ``camunda:initiator="author"`` stores user_id in the ``author``
+        process variable).
         """
         assert self.engine, "No engine"
         if not business_key:
@@ -354,13 +361,17 @@ class Operaton(DynamicCore):
 
     @keyword
     @except_interop_exception
-    def complete_task(self, name: str = "", process_instance_id: str = "", **variables: Any):
+    @with_authenticated_user
+    def complete_task(self, name: str = "", process_instance_id: str = "", user_id: str = "", **variables: Any):
         """Completes the active user task for the process instance.
 
         Uses the current instance in scope (set by ``Start Instance``) unless
         ``process_instance_id`` is provided explicitly.
         The task may be identified by its definition key *or* by its human-readable name.
         When *name* is omitted (and only one task is active), that task is completed.
+
+        If user_id is provided, it is set as the authenticated user before the task
+        is completed.
         """
         assert self.engine, "No engine"
         instance_id = self._resolve_instance_id(process_instance_id)
@@ -428,7 +439,8 @@ class Operaton(DynamicCore):
 
     @keyword
     @except_interop_exception
-    def start_instance_with_variables(self, process_definition_key: str, business_key: str = "", **variables: Any) -> str:
+    @with_authenticated_user
+    def start_instance_with_variables(self, process_definition_key: str, business_key: str = "", user_id: str = "", **variables: Any) -> str:
         """Starts a process instance with the given variables and stores it as the current instance.
 
         If *business_key* is not provided, a UUID4 is generated automatically.
@@ -448,3 +460,104 @@ class Operaton(DynamicCore):
         self._current_instance_id = str(instance.getId())
         self._current_business_key = business_key
         return self._current_instance_id
+    
+    @keyword
+    @except_interop_exception
+    @with_authenticated_user
+    def start_instance_before_activity(self, process_definition_key: str, activity_id: str, business_key: str = "", user_id: str = "", **variables: Any) -> str:
+        """Starts a process instance and places the token immediately before *activity_id*.
+
+        Behaves like Start Instance With Variables but positions the token before the
+        requested activity. Returns the started process instance id and stores it as
+        the current instance in scope.
+        """
+        assert self.engine, "No engine"
+        if not business_key:
+            business_key = str(uuid.uuid4())
+        runtime = self.engine.getRuntimeService()
+        builder = runtime.createProcessInstanceByKey(process_definition_key).businessKey(business_key)
+        if variables:
+            var_map = Variables.createVariables()
+            for name, value in variables.items():
+                var_map.putValue(name, value)
+            builder = builder.setVariables(var_map)
+
+        started = builder.startBeforeActivity(activity_id).execute()
+        assert started is not None, (
+            f"Engine returned no instance for activity '{activity_id}' "
+            f"in process '{process_definition_key}'"
+        )
+        instance_id = str(started.getId())
+
+        self._current_instance_id = instance_id
+        self._current_business_key = business_key
+        return self._current_instance_id
+    
+    @keyword
+    @except_interop_exception
+    def move_instance_to(self, activity_id: str, process_instance_id: str = ""):
+        """Moves the execution of the process instance to the given activity.
+
+        Example usage:
+
+        | ${instance}=    Start Instance    my-process
+        | Move Instance To    Activity_10   ${instance}
+        | Should Have Task    Review Order    ${instance}
+        """
+        instance_id = self._resolve_instance_id(process_instance_id)
+        runtime = self.engine.getRuntimeService()
+
+        # Find active executions with an activity id
+        executions = runtime.createExecutionQuery().processInstanceId(instance_id).list()
+        active_activities = []
+        for i in range(int(executions.size())):
+            exe = executions.get(i)
+            try:
+                aid = exe.getActivityId()
+            except Exception:
+                aid = None
+            if aid:
+                active_activities.append(str(aid))
+
+        if len(active_activities) != 1:
+            raise AssertionError(
+                "move_instance_to requires exactly one active token at a single activity. "
+                f"Found {len(active_activities)} active activities: {active_activities}"
+            )
+
+        current_activity = active_activities[0]
+
+        modification = runtime.createProcessInstanceModification(instance_id)
+        modification.startBeforeActivity(activity_id)
+        # Cancel all active executions at the current activity to avoid parallel tokens after the move.
+        modification.cancelAllForActivity(current_activity)
+        modification.execute()
+
+    @keyword
+    @except_interop_exception
+    def get_active_activities(self, process_instance_id: str = "") -> list:
+        """Returns the IDs of all currently active (unfinished) activities.
+
+        Useful for diagnosing where the token is when a test gets stuck.
+
+        Example::
+
+            ${activities}=    Get Active Activities
+            Log    ${activities}
+        """
+        assert self.engine, "No engine"
+        instance_id = self._resolve_instance_id(process_instance_id)
+        history = self.engine.getHistoryService()
+        items = (history.createHistoricActivityInstanceQuery()
+                 .processInstanceId(instance_id)
+                 .unfinished()
+                 .list())
+        result = []
+        for i in range(int(items.size())):
+            item = items.get(i)
+            result.append({
+                "activityId": str(item.getActivityId()),
+                "activityName": str(item.getActivityName()) if item.getActivityName() else None,
+                "activityType": str(item.getActivityType()) if item.getActivityType() else None,
+            })
+        return result
