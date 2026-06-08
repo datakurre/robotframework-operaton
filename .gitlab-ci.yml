@@ -20,7 +20,7 @@ variables:
 
 # ── Test ──────────────────────────────────────────────────────────────────────
 
-test:
+check:
   stage: test
   image: maven:3-eclipse-temurin-21
   tags:
@@ -32,7 +32,7 @@ test:
   except:
     - tags   # release job below covers tag pipelines
 
-robot-report:
+test:
   stage: test
   image: maven:3-eclipse-temurin-21
   tags:
