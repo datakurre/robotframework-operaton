@@ -39,6 +39,9 @@ test:
     - executor-podman
   # Blocking Robot gate + report collector.
   <<: *maven-cache
+  before_script:
+    # Enable BPMN/DMN rendering during Robot suites.
+    - apt-get update -qq && apt-get install -y -qq nodejs npm
   script:
     # Compile test classpath and run Robot suites with rich report output.
     - mvn -q -DskipTests test-compile
