@@ -76,6 +76,10 @@ def with_authenticated_user(func):
 
         self_obj = args[0] if args else None
         engine = getattr(self_obj, "engine", None) if self_obj else None
+        # if not found, try to find via self.ctx.engine (specialized keyword classes)
+        if engine is None and self_obj is not None:
+            ctx = getattr(self_obj, "ctx", None)
+            engine = getattr(ctx, "engine", None) if ctx else None
 
         if user_id and engine:
             engine.getIdentityService().setAuthenticatedUserId(user_id)

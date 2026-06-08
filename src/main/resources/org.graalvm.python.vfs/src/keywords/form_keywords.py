@@ -1,7 +1,7 @@
 from robot.api.deco import keyword
 from typing import Any
 
-from keywords.base import Variables, except_interop_exception
+from keywords.base import Variables, except_interop_exception, with_authenticated_user
 
 try:
     import java  # pyright: ignore
@@ -19,10 +19,12 @@ class FormKeywords:
 
     @keyword
     @except_interop_exception
+    @with_authenticated_user
     def submit_task_form(
         self,
         name: str = "",
         process_instance_id: str = "",
+        user_id: str = "",
         **form_variables: Any,
     ):
         """Submits a user task form with the given field values.
@@ -34,7 +36,7 @@ class FormKeywords:
 
         Example usage in Robot::
 
-            Submit Task Form    my-task
+            Submit Task Form    my-task    user_id=alice
             ...    firstName=Alice    amount=42    approved=${True}
         """
         assert self.ctx.engine, "No engine"
