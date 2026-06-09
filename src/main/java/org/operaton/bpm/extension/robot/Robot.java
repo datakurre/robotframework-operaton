@@ -26,9 +26,6 @@ public class Robot {
     }
 
     boolean debugMode = isDebugMode(args);
-    if (debugMode) {
-      System.setProperty("ROBOT_LOG_LEVEL", "INFO");
-    }
 
     Context.Builder builder =
         GraalPyResources.contextBuilder()
