@@ -127,7 +127,7 @@ class Operaton(DynamicCore):
     | Engine lifecycle     | Setup Process Engine, Teardown Process Engine, Deploy Resources   |
     | Process instances    | Start Instance, Start Instance With Variables, Get Current Instance, Get Current Business Key |
     | User tasks           | Should Have Task, Complete Task, Get Tasks                        |
-    | Process variables    | Get Variable, Set Variable                                        |
+    | Process variables    | Get Process Variable, Set Process Variable                        |
     | Process state        | Should Be Active, Should Be Ended, Should Be Suspended, Suspend Instance, Activate Instance, Should Have Active, Should Have Completed |
     | History              | Get Activity History, Get Historic Variables, Get Completed Instances, Get Process Definition Id, Get Process Model Xml |
     | Events               | Correlate Message, Send Message, Signal Event, Throw Signal, Should Have Incident |
@@ -392,7 +392,7 @@ class Operaton(DynamicCore):
 
     @keyword
     @except_interop_exception
-    def get_variable(self, variable_name: str, process_instance_id: str = "") -> Any:
+    def get_process_variable(self, variable_name: str, process_instance_id: str = "") -> Any:
         """Returns the value of a process variable.
 
         Defaults to the current instance in scope; pass ``process_instance_id`` to override.
@@ -404,7 +404,7 @@ class Operaton(DynamicCore):
 
     @keyword
     @except_interop_exception
-    def set_variable(self, variable_name: str, variable_value: Any = None, process_instance_id: str = ""):
+    def set_process_variable(self, variable_name: str, variable_value: Any = None, process_instance_id: str = ""):
         """Sets a process variable.
 
         Defaults to the current instance in scope; pass ``process_instance_id`` to override.

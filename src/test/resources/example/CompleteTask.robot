@@ -33,5 +33,5 @@ XOR Gateway Takes Default Path When No Variable Is Provided
     [Teardown]    Teardown Process Engine
     Deploy Resources    ${CURDIR}${/}xor-gateway-process.bpmn
     Start Instance    xor-gateway-process
-    Complete Task    review-task
+    Complete Task    review-task    approved=${EMPTY}
     Should Have Task    rejected-task

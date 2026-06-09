@@ -11,7 +11,7 @@ Start Instance With User Id Sets Initiator Variable
     [Teardown]    Teardown Process Engine
     Deploy Resources    ${CURDIR}${/}initiator-process.bpmn
     Start Instance    initiator-process    user_id=alice
-    ${author}=    Get Variable    author
+    ${author}=    Get Process Variable    author
     Should Be Equal    ${author}    alice
 
 Start Instance With Variables With User Id Sets Initiator Variable
@@ -21,7 +21,7 @@ Start Instance With Variables With User Id Sets Initiator Variable
     [Teardown]    Teardown Process Engine
     Deploy Resources    ${CURDIR}${/}initiator-process.bpmn
     Start Instance With Variables    initiator-process    user_id=frank
-    ${author}=    Get Variable    author
+    ${author}=    Get Process Variable    author
     Should Be Equal    ${author}    frank
 
 Start Instance With User Id Stores Current Instance
@@ -41,7 +41,7 @@ Start Instance Without User Id Leaves Initiator Variable Empty
     [Teardown]    Teardown Process Engine
     Deploy Resources    ${CURDIR}${/}initiator-process.bpmn
     Start Instance    initiator-process
-    ${author}=    Get Variable    author
+    ${author}=    Get Process Variable    author
     Should Be Empty    ${author}
 
 Start Instance Before Activity With User Id Starts Successfully
@@ -88,5 +88,5 @@ Complete Task With User Id Clears Authentication After Completion
     Start Instance    initiator-process    user_id=alice
     Complete Task    Review    user_id=alice
     Start Instance    initiator-process
-    ${author}=    Get Variable    author
+    ${author}=    Get Process Variable    author
     Should Be Empty    ${author}

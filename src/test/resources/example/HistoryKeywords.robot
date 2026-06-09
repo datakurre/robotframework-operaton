@@ -18,7 +18,7 @@ Get Historic Variables After Process Completion
     [Setup]    Setup Process Engine
     Deploy Resources    ${CURDIR}${/}process.bpmn
     Start Instance    my-project-process
-    Set Variable    testVar    testValue
+    Set Process Variable    testVar    testValue
     Complete Task    say-hello
     ${vars}=    Get Historic Variables
     Dictionary Should Contain Key    ${vars}    testVar
