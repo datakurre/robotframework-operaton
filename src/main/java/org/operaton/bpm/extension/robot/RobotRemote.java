@@ -74,7 +74,44 @@ public class RobotRemote {
                     sys.path.insert(1, os.path.join(cwd, "lib"))
 
                     from Operaton import Operaton
+                    import robotremoteserver
                     from robotremoteserver import RobotRemoteServer
+                    from xmlrpc.server import SimpleXMLRPCServer
+
+                    # Patch robotremoteserver to preserve None over XML-RPC.
+                    # By default it converts None → '' which loses the distinction
+                    # between an absent variable and an empty-string variable.
+                    _orig_server_init = robotremoteserver.StoppableXMLRPCServer.__init__
+                    def _patched_server_init(self, host, port):
+                        SimpleXMLRPCServer.__init__(self, (host, port), logRequests=False,
+                                                   bind_and_activate=False, allow_none=True)
+                        self._activated = False
+                        self._stopper_thread = None
+                    robotremoteserver.StoppableXMLRPCServer.__init__ = _patched_server_init
+
+                    def _patched_handle_return_value(self, ret):
+                        if ret is None:
+                            return None
+                        if isinstance(ret, (str, bytes)):
+                            return self._handle_binary_result(ret)
+                        if isinstance(ret, (int, float)):
+                            return ret
+                        if isinstance(ret, dict):
+                            return {self._str(k): self._handle_return_value(v)
+                                    for k, v in ret.items()}
+                        try:
+                            return [self._handle_return_value(item) for item in ret]
+                        except TypeError:
+                            return self._str(ret)
+                    robotremoteserver.KeywordResult._handle_return_value = _patched_handle_return_value
+
+                    def _patched_set_return(self, value):
+                        value = self._handle_return_value(value)
+                        if value is None:
+                            self.data['return'] = None
+                        elif value != '':
+                            self.data['return'] = value
+                    robotremoteserver.KeywordResult.set_return = _patched_set_return
 
                     library = Operaton()
                     RobotRemoteServer(
