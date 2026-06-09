@@ -3,6 +3,8 @@
   jdk_headless,
   maven,
   stdenv,
+  profile ? "shade",
+  classifier ? "fat",
 }:
 let
   # Pre-fetch Python wheels (ZIP archives) so the Nix sandbox build can
@@ -78,9 +80,9 @@ let
       # Run the full Maven build (with -Pnix skipping graalpy-maven-plugin)
       # so every artifact needed for an offline build is downloaded to $out.
       # The build output itself is discarded; only the local repo matters.
-      mvn -Pshade,nix package -Dmaven.repo.local=$out -DskipTests -q || true
+      mvn -P${profile},nix package -Dmaven.repo.local=$out -DskipTests -q || true
       # A second pass picks up anything missed (e.g. shade plugin artifacts).
-      mvn -Pshade,nix package -Dmaven.repo.local=$out -DskipTests -q || true
+      mvn -P${profile},nix package -Dmaven.repo.local=$out -DskipTests -q || true
     '';
     installPhase = ''
       find $out -type f \
@@ -101,8 +103,8 @@ stdenv.mkDerivation rec {
   pname = "operaton-bpm-extension-robot";
   version = "1.0-SNAPSHOT";
 
-  # The Maven shade plugin (profile: shade) produces this exact filename.
-  name = "${pname}-${version}-fat.jar";
+  # The Maven shade plugin produces this exact filename for the selected profile.
+  name = "${pname}-${version}-${classifier}.jar";
 
   src = filteredSrc;
 
@@ -178,8 +180,8 @@ stdenv.mkDerivation rec {
 
     # 4. Offline Maven build
     # -Pnix skips graalpy-maven-plugin (home/ and venv/ are already in place).
-    # -Pshade builds the fat JAR.
-    mvn -Pshade,nix package -DskipTests --offline \
+    # -P${profile} builds the selected shaded JAR.
+    mvn -P${profile},nix package -DskipTests --offline \
       -Dmaven.repo.local=${mavenRepository}
   '';
 
