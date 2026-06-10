@@ -23,13 +23,13 @@ help:  ## Show this help
 # "No module named '_sysconfigdata__linux_x86_64-linux-gnu'".
 # This target pre-creates a stub module in any cached GraalPy python-home
 # directories so that ensurepip can succeed.
-# On a fresh machine the first build still fails (cache not yet populated);
-# run 'make build' a second time and it will succeed.
-_SYSCONFIGDATA_STUB := build_time_vars = {'SOABI': 'cpython-312-x86_64-linux-gnu', 'EXT_SUFFIX': '.cpython-312-x86_64-linux-gnu.so'}
+# On a fresh machine the cache can appear during the first Maven run;
+# compile/test targets therefore retry once after applying this patch again.
+_SYSCONFIGDATA_STUB := build_time_vars = {"SOABI": "cpython-312-x86_64-linux-gnu", "EXT_SUFFIX": ".cpython-312-x86_64-linux-gnu.so"}
 .PHONY: _fix-graalpy-sysconfig
 _fix-graalpy-sysconfig:
 	@for d in $(HOME)/.cache/org.graalvm.polyglot/python/python-home/*/lib/python3.12; do \
-	  if [ -d "$$d" ] && [ ! -f "$$d/_sysconfigdata__linux_x86_64-linux-gnu.py" ]; then \
+	  if [ -d "$$d" ]; then \
 	    printf '$(value _SYSCONFIGDATA_STUB)\n' > "$$d/_sysconfigdata__linux_x86_64-linux-gnu.py"; \
 	  fi; \
 	done; true
@@ -117,12 +117,20 @@ _nix-venv-bootstrap:
 	done
 
 .PHONY: compile
-compile:  ## Compile Java + test sources (no tests executed)
-	mvn -q -DskipTests test-compile
+compile: _fix-graalpy-sysconfig  ## Compile Java + test sources (no tests executed)
+	@mvn -q -DskipTests test-compile || { \
+	  echo "Retrying compile after applying GraalPy sysconfig stub..."; \
+	  $(MAKE) _fix-graalpy-sysconfig; \
+	  mvn -q -DskipTests test-compile; \
+	}
 
 .PHONY: test
-test:  ## Run all JUnit + Robot suites
-	mvn test
+test: _fix-graalpy-sysconfig  ## Run all JUnit + Robot suites
+	@mvn test || { \
+	  echo "Retrying tests after applying GraalPy sysconfig stub..."; \
+	  $(MAKE) _fix-graalpy-sysconfig; \
+	  mvn test; \
+	}
 
 .PHONY: check
 check:  ## mvn verify
