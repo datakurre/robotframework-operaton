@@ -1,7 +1,7 @@
 from robot.api.deco import keyword
 from typing import TYPE_CHECKING
 
-from keywords.base import Variables, java, except_interop_exception
+from keywords.base import Variables, VariableValue, java, except_interop_exception
 
 
 if TYPE_CHECKING:
@@ -31,7 +31,7 @@ class TimerKeywords:
 
     @keyword
     @except_interop_exception
-    def advance_clock(self, milliseconds: object) -> None:
+    def advance_clock(self, milliseconds: str | int) -> None:
         """Advances the process engine clock by the given number of milliseconds.
 
         Example usage in Robot::
@@ -118,7 +118,7 @@ class TimerKeywords:
         topic: str,
         process_instance_id: str = "",
         worker_id: str = "robot-worker",
-        **variables: object,
+        **variables: VariableValue,
     ) -> int:
         """Completes one external task for the given topic and executes pending jobs before and after."""
         assert self.ctx.engine, "No engine"
