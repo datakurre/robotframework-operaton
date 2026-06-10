@@ -5,7 +5,11 @@
     mvn2nix.inputs.nixpkgs.follows = "nixpkgs";
   };
   outputs =
-    { self, nixpkgs, mvn2nix }:
+    {
+      self,
+      nixpkgs,
+      mvn2nix,
+    }:
     let
       systems = [
         "x86_64-linux"
@@ -63,7 +67,8 @@
           program = "${pkgsFor.${system}.operaton-robot-vasara}/bin/operaton-robot";
         };
       });
-      packages = forAllSystems (system:
+      packages = forAllSystems (
+        system:
         let
           pkgs = pkgsFor.${system};
         in
