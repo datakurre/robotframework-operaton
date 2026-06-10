@@ -6,6 +6,7 @@ let
       packages = [
         pkgs.gnumake
         pkgs.maven
+        pkgs.mypy
         pkgs.google-java-format
         pkgs.nixfmt
         pkgs.prettier
