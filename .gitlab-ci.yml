@@ -16,11 +16,26 @@ variables:
     - executor-podman
   before_script:
     - |
+      run_devenv() {
+        if [ -n "${NETRC:-}" ] && [ -n "${NIX_CACHE:-}" ]; then
+          devenv shell --no-eval-cache \
+            --nix-option extra-sandbox-paths "${NETRC}" \
+            --nix-option netrc-file "${NETRC}" \
+            --nix-option substituters "${NIX_CACHE}?trusted=true" \
+            -- "$@"
+        else
+          devenv shell --no-eval-cache -- "$@"
+        fi
+      }
+
+      if [ -n "${M2_SETTINGS:-}" ] && [ -f "${M2_SETTINGS}" ]; then
+        mkdir -p "${HOME}/.m2"
+        cp "${M2_SETTINGS}" "${HOME}/.m2/settings.xml"
+        chmod 600 "${HOME}/.m2/settings.xml"
+      fi
+
       if [ -n "${NETRC:-}" ] && [ -n "${NIX_CACHE:-}" ]; then
-        export NIX_CONFIG="accept-flake-config = true
-        extra-sandbox-paths = ${NETRC}
-        netrc-file = ${NETRC}
-        substituters = ${NIX_CACHE}?trusted=true
+        export NIX_CONFIG="$(printf 'accept-flake-config = true\nextra-sandbox-paths = %s\nnetrc-file = %s\nsubstituters = %s?trusted=true' "${NETRC}" "${NETRC}" "${NIX_CACHE}")"
       else
         export NIX_CONFIG="accept-flake-config = true"
       fi
@@ -31,7 +46,12 @@ variables:
           xargs nix copy --accept-flake-config --option extra-sandbox-paths "${NETRC}" --option netrc-file "${NETRC}" --option substituters "${NIX_CACHE}?trusted=true" --to "${NIX_CACHE}" || \
           echo "Nix cache push failed; continuing without failing job."
       else
-        echo "Skipping Nix cache push (NETRC/NIX_CACHE missing or shell profile not realized)."
+        [ -z "${NETRC:-}" ] && echo "Skipping Nix cache push: NETRC is not set."
+        [ -z "${NIX_CACHE:-}" ] && echo "Skipping Nix cache push: NIX_CACHE is not set."
+        if [ ! -e .devenv/profiles/shell/profile ]; then
+          echo "Skipping Nix cache push: .devenv/profiles/shell/profile is missing."
+          [ -d .devenv/profiles/shell ] && ls -la .devenv/profiles/shell || echo "Directory .devenv/profiles/shell does not exist."
+        fi
       fi
 
 # ── Cache Maven local repository across jobs/pipelines ────────────────────────
@@ -49,19 +69,16 @@ check:
   stage: test
   <<: [*devenv-job, *maven-cache]
   script:
-    - devenv shell --no-eval-cache -- make format-check
-    - devenv shell --no-eval-cache -- make mypy
-    - devenv shell --no-eval-cache -- make compile
+    - run_devenv make format-check
+    - run_devenv make mypy
   except:
     - tags # release job below covers tag pipelines
 
 test:
   stage: test
   <<: [*devenv-job, *maven-cache]
-  # Blocking Robot gate + report collector.
   script:
-    - devenv shell --no-eval-cache -- make compile
-    - devenv shell --no-eval-cache -- make ci-robot OUTPUTDIR=robot-results SUITE=src/test/resources/example
+    - run_devenv make test
   artifacts:
     when: always
     expire_in: 2 weeks
@@ -88,25 +105,25 @@ build-release:
     - echo "VERSION=$VERSION" >> release.env
 
     # Set Maven project version to match the tag.
-    - devenv shell --no-eval-cache -- mvn -q versions:set -DnewVersion=$VERSION -DgenerateBackupPoms=false
+    - run_devenv mvn -q versions:set -DnewVersion=$VERSION -DgenerateBackupPoms=false
 
     # Set Python proxy version to match the tag.
     - sed -i "s/^version = .*/version = \"$VERSION\"/" python/pyproject.toml
 
     # Full test run.
-    - devenv shell --no-eval-cache -- make test
+    - run_devenv make test
 
     # Build fat JAR (standard — no Vasara classes).
-    - devenv shell --no-eval-cache -- make dist-fat
+    - run_devenv make dist-fat
 
     # Build Vasara fat JAR (includes fi.jyu.vasara.* form customizations).
-    - devenv shell --no-eval-cache -- make dist-vasara
+    - run_devenv make dist-vasara
 
     # Generate Operaton.libspec.
-    - devenv shell --no-eval-cache -- make dist-libspec
+    - run_devenv make dist-libspec
 
     # Build CPython proxy wheel.
-    - devenv shell --no-eval-cache -- make dist-wheel
+    - run_devenv make dist-wheel
 
     # Upload artefacts to the GitLab Generic Package Registry.
     - FAT_JAR="target/operaton-bpm-extension-robot-${VERSION}-fat.jar"
@@ -204,11 +221,11 @@ pages:
     - main
   script:
     # Build the project (skip tests for speed).
-    - devenv shell --no-eval-cache -- make build
+    - run_devenv make build
 
     # Generate the HTML keyword reference and libspec.
-    - devenv shell --no-eval-cache -- make dist-docs DOCS_DIR=public
-    - devenv shell --no-eval-cache -- make dist-libspec DOCS_DIR=public
+    - run_devenv make dist-docs DOCS_DIR=public
+    - run_devenv make dist-libspec DOCS_DIR=public
 
     # Add a minimal index.html that redirects to the keyword reference.
     - |
