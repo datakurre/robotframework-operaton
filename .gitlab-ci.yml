@@ -34,6 +34,10 @@ variables:
         chmod 600 "${HOME}/.m2/settings.xml"
       fi
 
+      # Fix permissions on cached .m2/repository to avoid AccessDeniedException
+      mkdir -p "${CI_PROJECT_DIR}/.m2/repository"
+      chmod -R u+w "${CI_PROJECT_DIR}/.m2/repository" || true
+
       if [ -n "${NETRC:-}" ] && [ -n "${NIX_CACHE:-}" ]; then
         export NIX_CONFIG="$(printf 'accept-flake-config = true\nextra-sandbox-paths = %s\nnetrc-file = %s\nsubstituters = %s?trusted=true' "${NETRC}" "${NETRC}" "${NIX_CACHE}")"
       else
@@ -43,7 +47,10 @@ variables:
     - |
       if [ -n "${NETRC:-}" ] && [ -n "${NIX_CACHE:-}" ] && [ -e .devenv/profiles/shell/profile ]; then
         nix-store -qR "$(readlink -f .devenv/profiles/shell/profile)" | \
-          xargs nix copy --accept-flake-config --option extra-sandbox-paths "${NETRC}" --option netrc-file "${NETRC}" --option substituters "${NIX_CACHE}?trusted=true" --to "${NIX_CACHE}" || \
+          xargs -r nix copy \
+            --option extra-sandbox-paths "${NETRC}" \
+            --option netrc-file "${NETRC}" \
+            --to "${NIX_CACHE}" || \
           echo "Nix cache push failed; continuing without failing job."
       else
         [ -z "${NETRC:-}" ] && echo "Skipping Nix cache push: NETRC is not set."
