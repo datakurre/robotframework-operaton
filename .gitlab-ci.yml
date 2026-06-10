@@ -53,7 +53,7 @@ check:
     - devenv shell --no-eval-cache -- make mypy
     - devenv shell --no-eval-cache -- make compile
   except:
-    - tags   # release job below covers tag pipelines
+    - tags # release job below covers tag pipelines
 
 test:
   stage: test

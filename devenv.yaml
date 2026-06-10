@@ -12,5 +12,5 @@ inputs:
   treefmt-nix:
     url: github:numtide/treefmt-nix
 imports:
-- devenv-module-devcontainer
+  - devenv-module-devcontainer
 profile: shell

@@ -7,21 +7,21 @@ project and keep Maven and Nix builds in sync.
 
 ## Component inventory
 
-| Component | Where pinned | Nix hash(es) |
-|---|---|---|
-| GraalPy | `pom.xml` `<graalpy.version>` | `default.jar.nix` FOD `outputHash` |
-| Operaton BPM | `pom.xml` `<operaton.version>` | `default.jar.nix` FOD `outputHash` |
-| Spring Boot BOM | `pom.xml` `<spring-boot.version>` | `default.jar.nix` FOD `outputHash` |
-| Robot Framework | `pom.xml` `<package>robotframework==X.Y.Z</package>` | `default.jar.nix` `robotframeworkWheel` URL + `sha256` |
-| robotframework-pythonlibcore | `pom.xml` `<package>robotframework-pythonlibcore==X.Y.Z</package>` | `default.jar.nix` `pythonlibcoreWheel` URL + `sha256` |
-| robotremoteserver | `pom.xml` `<package>robotremoteserver==X.Y.Z</package>` | `default.jar.nix` `robotremoteserverWheel` URL + `sha256` |
-| AGENTS.md / README.md version table | `AGENTS.md` `## Versions` | — |
+| Component                           | Where pinned                                                       | Nix hash(es)                                              |
+| ----------------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------- |
+| GraalPy                             | `pom.xml` `<graalpy.version>`                                      | `default.jar.nix` FOD `outputHash`                        |
+| Operaton BPM                        | `pom.xml` `<operaton.version>`                                     | `default.jar.nix` FOD `outputHash`                        |
+| Spring Boot BOM                     | `pom.xml` `<spring-boot.version>`                                  | `default.jar.nix` FOD `outputHash`                        |
+| Robot Framework                     | `pom.xml` `<package>robotframework==X.Y.Z</package>`               | `default.jar.nix` `robotframeworkWheel` URL + `sha256`    |
+| robotframework-pythonlibcore        | `pom.xml` `<package>robotframework-pythonlibcore==X.Y.Z</package>` | `default.jar.nix` `pythonlibcoreWheel` URL + `sha256`     |
+| robotremoteserver                   | `pom.xml` `<package>robotremoteserver==X.Y.Z</package>`            | `default.jar.nix` `robotremoteserverWheel` URL + `sha256` |
+| AGENTS.md / README.md version table | `AGENTS.md` `## Versions`                                          | —                                                         |
 
 ---
 
 ## 1. Maven-only dependencies (Operaton, Spring Boot BOM, GraalPy)
 
-These are resolved by Maven at build time.  Nix bakes the downloaded artifacts
+These are resolved by Maven at build time. Nix bakes the downloaded artifacts
 into a fixed-output derivation (FOD); upgrading any of them requires
 regenerating the FOD hash.
 
@@ -68,7 +68,7 @@ regenerating the FOD hash.
 
 ## 2. Python wheels (Robot Framework, pythonlibcore, robotremoteserver)
 
-These are bundled into the GraalPy VFS at build time.  They are pinned in two
+These are bundled into the GraalPy VFS at build time. They are pinned in two
 places that must be kept in sync.
 
 ### Steps
@@ -82,7 +82,7 @@ places that must be kept in sync.
    <package>robotremoteserver==1.1.1</package>
    ```
 
-2. Find the new wheel on PyPI.  For each wheel:
+2. Find the new wheel on PyPI. For each wheel:
 
    ```sh
    # Open the PyPI JSON API to find the exact wheel filename and URL:
@@ -98,6 +98,7 @@ places that must be kept in sync.
    ```
 
    Example output:
+
    ```
    https://files.pythonhosted.org/packages/.../robotframework-7.1.1-py3-none-any.whl
    0461360be00dfb8ce1ab3f42370fa6eea3779e41c0b879a1f8ddcd2ec8e3679...
@@ -184,6 +185,7 @@ languages.java.jdk.package = pkgs.jdk21;
 ```
 
 To upgrade:
+
 1. Point `nixpkgs.url` at a newer channel (e.g. `nixos-25.11` → `nixos-26.05`).
 2. Run `nix flake update` to regenerate `flake.lock`.
 3. Run `devenv shell --no-eval-cache -- mvn test` to verify.
@@ -197,16 +199,16 @@ After any version bump, update the version table in `AGENTS.md`:
 ```markdown
 ## Versions
 
-| Component           | Version  |
-|---------------------|----------|
-| GraalPy             | 25.0.3   |
-| Operaton BPM        | 2.1.0    |
-| Spring Boot BOM     | 3.3.3    |
-| Robot Framework     | 7.1.1    |
-| JUnit Jupiter       | 5.10.2   |
-| AssertJ             | 3.25.3   |
-| Java source/target  | 17       |
-| Runtime JDK         | 21       |
+| Component          | Version |
+| ------------------ | ------- |
+| GraalPy            | 25.0.3  |
+| Operaton BPM       | 2.1.0   |
+| Spring Boot BOM    | 3.3.3   |
+| Robot Framework    | 7.1.1   |
+| JUnit Jupiter      | 5.10.2  |
+| AssertJ            | 3.25.3  |
+| Java source/target | 17      |
+| Runtime JDK        | 21      |
 ```
 
 ---
