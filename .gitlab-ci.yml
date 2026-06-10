@@ -85,6 +85,7 @@ test:
   stage: test
   <<: [*devenv-job, *maven-cache]
   script:
+    - run_devenv make build
     - run_devenv make ci-robot SUITE=src/test/resources/example OUTPUTDIR=robot-results
   artifacts:
     when: always
