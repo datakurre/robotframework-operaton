@@ -47,22 +47,22 @@ Tests are driven by JUnit 5: each `*Test.java` calls `RobotCliTest.runRobot(...)
 
 ## Layout
 
-| Path | Role |
-|---|---|
-| [pom.xml](pom.xml) | Single-module Maven build; flattened properties; `native` profile. |
-| [src/main/java/org/operaton/bpm/extension/robot/Robot.java](src/main/java/org/operaton/bpm/extension/robot/Robot.java) | CLI entry point (forwards args to `robot.run.run_cli`). Dispatches `--watch` and `--remote`. |
-| [src/main/java/org/operaton/bpm/extension/robot/RobotRemote.java](src/main/java/org/operaton/bpm/extension/robot/RobotRemote.java) | Remote server mode: hosts Operaton library over XML-RPC for CPython/RobotCode. |
-| [src/main/java/org/operaton/bpm/extension/robot/RobotWatch.java](src/main/java/org/operaton/bpm/extension/robot/RobotWatch.java) | Watch mode (`--watch`): keeps one GraalPy context alive; re-runs Robot on file changes (~1 s). Recreates context on `.py` changes (~2–3 s). |
-| [src/main/java/org/operaton/bpm/extension/robot/Libdoc.java](src/main/java/org/operaton/bpm/extension/robot/Libdoc.java) | Generates keyword docs (HTML) and machine-readable `.libspec` for RobotCode LSP. |
-| [src/main/resources/org.graalvm.python.vfs/src/Operaton.py](src/main/resources/org.graalvm.python.vfs/src/Operaton.py) | The keyword library. **Add new keywords here.** |
-| [src/test/java/org/operaton/bpm/extension/robot/RobotCliTest.java](src/test/java/org/operaton/bpm/extension/robot/RobotCliTest.java) | Shared `runRobot(outputDir, suitePath)` helper + smoke tests. |
-| `src/test/java/.../*Test.java` | One JUnit class per feature; each invokes a same-named `.robot` suite. |
-| [src/test/resources/example/](src/test/resources/example/) | Robot suites + BPMN + DMN fixtures. |
-| [python/](python/) | CPython proxy wheel (`robotframework-operaton`). Auto-spawns JVM Remote server, or connects to a pre-existing one via `OPERATON_REMOTE`. |
-| [robot.toml](robot.toml) | RobotCode configuration for VS Code keyword discovery and test execution. |
-| [devenv.nix](devenv.nix) | JDK 21, Maven, formatters. |
-| [Makefile](Makefile) | Standard targets — see table below. |
-| `tmp/` | **Reference checkout — do not modify.** Originally the source the library was ported from. |
+| Path                                                                                                                                 | Role                                                                                                                                        |
+| ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| [pom.xml](pom.xml)                                                                                                                   | Single-module Maven build; flattened properties; `native` profile.                                                                          |
+| [src/main/java/org/operaton/bpm/extension/robot/Robot.java](src/main/java/org/operaton/bpm/extension/robot/Robot.java)               | CLI entry point (forwards args to `robot.run.run_cli`). Dispatches `--watch` and `--remote`.                                                |
+| [src/main/java/org/operaton/bpm/extension/robot/RobotRemote.java](src/main/java/org/operaton/bpm/extension/robot/RobotRemote.java)   | Remote server mode: hosts Operaton library over XML-RPC for CPython/RobotCode.                                                              |
+| [src/main/java/org/operaton/bpm/extension/robot/RobotWatch.java](src/main/java/org/operaton/bpm/extension/robot/RobotWatch.java)     | Watch mode (`--watch`): keeps one GraalPy context alive; re-runs Robot on file changes (~1 s). Recreates context on `.py` changes (~2–3 s). |
+| [src/main/java/org/operaton/bpm/extension/robot/Libdoc.java](src/main/java/org/operaton/bpm/extension/robot/Libdoc.java)             | Generates keyword docs (HTML) and machine-readable `.libspec` for RobotCode LSP.                                                            |
+| [src/main/resources/org.graalvm.python.vfs/src/Operaton.py](src/main/resources/org.graalvm.python.vfs/src/Operaton.py)               | The keyword library. **Add new keywords here.**                                                                                             |
+| [src/test/java/org/operaton/bpm/extension/robot/RobotCliTest.java](src/test/java/org/operaton/bpm/extension/robot/RobotCliTest.java) | Shared `runRobot(outputDir, suitePath)` helper + smoke tests.                                                                               |
+| `src/test/java/.../*Test.java`                                                                                                       | One JUnit class per feature; each invokes a same-named `.robot` suite.                                                                      |
+| [src/test/resources/example/](src/test/resources/example/)                                                                           | Robot suites + BPMN + DMN fixtures.                                                                                                         |
+| [python/](python/)                                                                                                                   | CPython proxy wheel (`robotframework-operaton`). Auto-spawns JVM Remote server, or connects to a pre-existing one via `OPERATON_REMOTE`.    |
+| [robot.toml](robot.toml)                                                                                                             | RobotCode configuration for VS Code keyword discovery and test execution.                                                                   |
+| [devenv.nix](devenv.nix)                                                                                                             | JDK 21, Maven, formatters.                                                                                                                  |
+| [Makefile](Makefile)                                                                                                                 | Standard targets — see table below.                                                                                                         |
+| `tmp/`                                                                                                                               | **Reference checkout — do not modify.** Originally the source the library was ported from.                                                  |
 
 ## Development setup
 
@@ -126,33 +126,33 @@ devenv shell --no-eval-cache -- make run SUITE="--loglevel DEBUG src/test/resour
 
 ### Makefile target reference
 
-| Target | Description |
-|---|---|
-| `build` | Thin JAR: `mvn package -DskipTests` (dev/test classpath only) |
-| `dist-fat` | **Standard fat JAR** (default deliverable): `-Pshade package -DskipTests` |
-| `dist-vasara` | Vasara fat JAR (includes `fi.jyu.vasara.*`): `-Pshade-vasara package -DskipTests` |
-| `dist-native` | Native binary (GraalVM native-image; slow): `-Pnative package` |
-| `dist-wheel` | CPython proxy wheel under `python/dist/` |
-| `dist-docs` | Generate `docs/Operaton.html` keyword reference |
-| `dist-libspec` | Generate `docs/Operaton.libspec` for RobotCode LSP |
-| `clean` | `mvn clean` |
-| `test` | All JUnit + Robot suites (Nix-aware: uses `-Pnix` in devenv) |
-| `check` | `mvn verify` (test + integration checks) |
-| `mypy` | Run `mypy` on Python sources |
-| `run` | Run a suite via fat JAR (`SUITE=path/to/Suite.robot`) |
-| `run-vasara` | Run a suite via Vasara JAR |
-| `run-native` | Run a suite via native binary |
-| `robot` | Run a suite via Maven classpath runner (no pre-built JAR needed) |
-| `watch` | Fat JAR in-process watcher, re-run on any change (~1 s) — fastest loop |
-| `watch-vasara` | Vasara JAR in-process watcher |
-| `watch-dev` | Maven runner watcher, rebuilds VFS on `.py` changes |
-| `watch-native` | Native binary watcher (`.py` changes require `dist-native` manually) |
-| `remote` | Long-running Remote server on `:8270` via fat JAR |
-| `remote-vasara` | Long-running Remote server via Vasara JAR |
-| `remote-dev` | Long-running Remote server via Maven classpath |
-| `format` | Format sources with `treefmt` |
-| `format-check` | Verify formatting with `treefmt --ci` |
-| `install-proxy` | `pip install -e python/` (editable install) |
+| Target          | Description                                                                       |
+| --------------- | --------------------------------------------------------------------------------- |
+| `build`         | Thin JAR: `mvn package -DskipTests` (dev/test classpath only)                     |
+| `dist-fat`      | **Standard fat JAR** (default deliverable): `-Pshade package -DskipTests`         |
+| `dist-vasara`   | Vasara fat JAR (includes `fi.jyu.vasara.*`): `-Pshade-vasara package -DskipTests` |
+| `dist-native`   | Native binary (GraalVM native-image; slow): `-Pnative package`                    |
+| `dist-wheel`    | CPython proxy wheel under `python/dist/`                                          |
+| `dist-docs`     | Generate `docs/Operaton.html` keyword reference                                   |
+| `dist-libspec`  | Generate `docs/Operaton.libspec` for RobotCode LSP                                |
+| `clean`         | `mvn clean`                                                                       |
+| `test`          | All JUnit + Robot suites (Nix-aware: uses `-Pnix` in devenv)                      |
+| `check`         | `mvn verify` (test + integration checks)                                          |
+| `mypy`          | Run `mypy` on Python sources                                                      |
+| `run`           | Run a suite via fat JAR (`SUITE=path/to/Suite.robot`)                             |
+| `run-vasara`    | Run a suite via Vasara JAR                                                        |
+| `run-native`    | Run a suite via native binary                                                     |
+| `robot`         | Run a suite via Maven classpath runner (no pre-built JAR needed)                  |
+| `watch`         | Fat JAR in-process watcher, re-run on any change (~1 s) — fastest loop            |
+| `watch-vasara`  | Vasara JAR in-process watcher                                                     |
+| `watch-dev`     | Maven runner watcher, rebuilds VFS on `.py` changes                               |
+| `watch-native`  | Native binary watcher (`.py` changes require `dist-native` manually)              |
+| `remote`        | Long-running Remote server on `:8270` via fat JAR                                 |
+| `remote-vasara` | Long-running Remote server via Vasara JAR                                         |
+| `remote-dev`    | Long-running Remote server via Maven classpath                                    |
+| `format`        | Format sources with `treefmt`                                                     |
+| `format-check`  | Verify formatting with `treefmt --ci`                                             |
+| `install-proxy` | `pip install -e python/` (editable install)                                       |
 
 ## Conventions
 
@@ -186,16 +186,16 @@ devenv shell --no-eval-cache -- make run SUITE="--loglevel DEBUG src/test/resour
 
 ## Versions
 
-| Component | Version |
-|---|---|
-| GraalPy | 25.0.3 |
-| Operaton BPM | 2.1.0 |
-| Spring Boot (BOM only) | 3.3.3 |
-| Robot Framework | 7.1.1 (bundled into VFS at build time) |
-| JUnit Jupiter | 5.10.2 |
-| AssertJ | 3.25.3 |
-| Java source/target | 17 |
-| Runtime JDK (devenv) | 21 |
+| Component              | Version                                |
+| ---------------------- | -------------------------------------- |
+| GraalPy                | 25.0.3                                 |
+| Operaton BPM           | 2.1.0                                  |
+| Spring Boot (BOM only) | 3.3.3                                  |
+| Robot Framework        | 7.1.1 (bundled into VFS at build time) |
+| JUnit Jupiter          | 5.10.2                                 |
+| AssertJ                | 3.25.3                                 |
+| Java source/target     | 17                                     |
+| Runtime JDK (devenv)   | 21                                     |
 
 For instructions on upgrading any of the above, see [UPGRADE.md](UPGRADE.md).
 

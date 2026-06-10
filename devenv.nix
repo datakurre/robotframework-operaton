@@ -1,6 +1,41 @@
 let
   shell =
     { pkgs, ... }:
+    let
+      robocop = pkgs.python3Packages.buildPythonApplication rec {
+        pname = "robotframework-robocop";
+        version = "8.2.10";
+
+        src = pkgs.fetchFromGitHub {
+          owner = "MarketSquare";
+          repo = "robotframework-robocop";
+          rev = "8c17ac6f7e5beaaaf3739711bf55732d372fb709";
+          hash = "sha256-m+phKnm6gVhbG4oML31ypRoQsex2Gbr1MW+tWiVpxys=";
+        };
+
+        pyproject = true;
+        build-system = [
+          pkgs.python3Packages.hatchling
+        ];
+
+        dependencies = [
+          pkgs.python3Packages.click
+          pkgs.python3Packages.jinja2
+          pkgs.python3Packages.robotframework
+          pkgs.python3Packages.typer
+          pkgs.python3Packages.rich
+          pkgs.python3Packages.pathspec
+          pkgs.python3Packages.platformdirs
+          pkgs.python3Packages.pytz
+          pkgs.python3Packages.msgpack
+          pkgs.python3Packages.typing-extensions
+          pkgs.python3Packages."tomli-w"
+          pkgs.python3Packages.tomli
+        ];
+
+        doCheck = false;
+      };
+    in
     {
       languages.java.enable = true;
       languages.java.jdk.package = pkgs.jdk21;
@@ -8,7 +43,7 @@ let
       languages.python.enable = true;
       languages.python.venv.enable = true;
       languages.python.venv.requirements = ''
-        robotframework-robocop
+        robotcode
         -e ./python
       '';
 
@@ -16,7 +51,6 @@ let
         pkgs.gnumake
         pkgs.maven
         pkgs.mypy
-        pkgs.nixfmt
         pkgs.xmlformat
         pkgs.nodejs
       ];
@@ -26,81 +60,32 @@ let
       treefmt = {
         enable = true;
         config = {
-          settings.global = {
-            excludes = [
-              "target/**"
-            ];
+          settings.excludes = [
+            "target/**"
+            ".devenv/**"
+          ];
+
+          programs = {
+            nixfmt.enable = true;
+            black.enable = true;
+            google-java-format.enable = true;
+            prettier.enable = true;
           };
 
-          settings.formatter = {
-            nixfmt = {
-              command = "${pkgs.bash}/bin/bash";
-              options = [
-                "-euc"
-                ''
-                  for file in "$@"; do
-                    tmp="$(mktemp)"
-                    ${pkgs.nixfmt}/bin/nixfmt < "$file" > "$tmp"
-                    if ! cmp -s "$tmp" "$file"; then
-                      cat "$tmp" > "$file"
-                    fi
-                    rm -f "$tmp"
-                  done
-                ''
-                "--"
-              ];
-              includes = [
-                "*.nix"
-              ];
-            };
-
-            black = {
-              command = "${pkgs.black}/bin/black";
-              includes = [
-                "*.py"
-                "*.pyi"
-              ];
-            };
-
-            google-java-format = {
-              command = "${pkgs.google-java-format}/bin/google-java-format";
-              options = [ "--replace" ];
-              includes = [ "*.java" ];
-            };
-
-            robocop = {
-              command = "${pkgs.bash}/bin/bash";
-              options = [
-                "-euc"
-                ''
-                  for file in "$@"; do
-                    if command -v robocop >/dev/null 2>&1; then
-                      robocop format "$file"
-                    elif [ -x .devenv/profiles/shell/state/venv/bin/robocop ]; then
-                      .devenv/profiles/shell/state/venv/bin/robocop format "$file"
-                    else
-                      echo "robocop not available; skipping $file" >&2
-                    fi
-                  done
-                ''
-                "--"
-              ];
-              includes = [ "*.robot" ];
-            };
-
-            prettier = {
-              command = "${pkgs.prettier}/bin/prettier";
-              options = [ "--write" ];
-              includes = [
-                "*.js"
-                "*.mjs"
-                "*.json"
-                "*.ts"
-                "*.jsx"
-                "*.tsx"
-              ];
-            };
+          settings.formatter.robocop = {
+            command = "${robocop}/bin/robocop";
+            options = [ "format" ];
+            includes = [ "*.robot" ];
           };
+
+          settings.formatter.prettier.includes = [
+            "*.js"
+            "*.mjs"
+            "*.json"
+            "*.ts"
+            "*.jsx"
+            "*.tsx"
+          ];
         };
       };
 

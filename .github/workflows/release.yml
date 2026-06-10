@@ -3,10 +3,10 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 permissions:
-  contents: write   # needed for gh release create
+  contents: write # needed for gh release create
 
 jobs:
   release:
@@ -20,14 +20,14 @@ jobs:
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
+          java-version: "21"
           distribution: temurin
           cache: maven
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.x'
+          python-version: "3.x"
 
       - name: Extract version from tag
         id: version
