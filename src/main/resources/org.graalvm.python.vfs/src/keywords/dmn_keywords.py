@@ -3,14 +3,20 @@ from typing import TYPE_CHECKING
 
 import json
 
-from keywords.base import Variables, java, except_interop_exception
+from keywords.base import (
+    DmnValue,
+    Variables,
+    VariableValue,
+    java,
+    except_interop_exception,
+)
 
 
 if TYPE_CHECKING:
     from Operaton import Operaton
 
 
-DecisionRow = dict[str, object]
+DecisionRow = dict[str, DmnValue]
 DecisionResult = list[DecisionRow]
 
 
@@ -21,7 +27,7 @@ class DmnKeywords:
     @keyword
     @except_interop_exception
     def evaluate_decision(
-        self, decision_key: str, **variables: object
+        self, decision_key: str, **variables: VariableValue
     ) -> DecisionResult:
         """Evaluates a deployed DMN decision by key with the given input variables.
 
@@ -48,14 +54,14 @@ class DmnKeywords:
             row: DecisionRow = {}
             entry_map = entry.getEntryMap()
             for key in entry_map.keySet():
-                row[str(key)] = entry_map.get(key)
+                row[str(key)] = entry_map.get(key)  # type: ignore[assignment]  # GraalPy auto-boxes FEEL values
             result.append(row)
         return result
 
     @keyword
     @except_interop_exception
     def evaluate_decision_table(
-        self, decision_key: str, **variables: object
+        self, decision_key: str, **variables: VariableValue
     ) -> DecisionResult:
         """Evaluates a deployed DMN decision table by key with the given input variables.
 
@@ -83,14 +89,14 @@ class DmnKeywords:
             row: DecisionRow = {}
             entry_map = entry.getEntryMap()
             for key in entry_map.keySet():
-                row[str(key)] = entry_map.get(key)
+                row[str(key)] = entry_map.get(key)  # type: ignore[assignment]  # GraalPy auto-boxes FEEL values
             result.append(row)
         return result
 
     @keyword
     @except_interop_exception
     def decision_result_should_contain(
-        self, result: DecisionResult, output_name: str, expected_value: object
+        self, result: DecisionResult, output_name: str, expected_value: DmnValue
     ) -> None:
         """Asserts that at least one row in the decision result contains
         the expected value for the given output name.
@@ -130,7 +136,7 @@ class DmnKeywords:
 
     @keyword
     @except_interop_exception
-    def decision_single_entry(self, result: DecisionResult) -> object:
+    def decision_single_entry(self, result: DecisionResult) -> DmnValue:
         """Returns the single output value from a decision result with exactly
         one matched rule and one output column.
 
@@ -151,7 +157,9 @@ class DmnKeywords:
 
     @keyword
     @except_interop_exception
-    def collect_entries(self, result: DecisionResult, output_name: str) -> list[object]:
+    def collect_entries(
+        self, result: DecisionResult, output_name: str
+    ) -> list[DmnValue]:
         """Returns all values of a specific output column from a decision result.
 
         Extracts the value of the given output column from each matched rule.

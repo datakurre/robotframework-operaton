@@ -1,7 +1,7 @@
 from robot.api.deco import keyword
 from typing import TYPE_CHECKING
 
-from keywords.base import java, except_interop_exception
+from keywords.base import NativeValue, java, except_interop_exception
 
 
 if TYPE_CHECKING:
@@ -46,7 +46,7 @@ class HistoryKeywords:
     @except_interop_exception
     def get_historic_variables(
         self, process_instance_id: str = ""
-    ) -> dict[str, object]:
+    ) -> dict[str, NativeValue]:
         """Returns historic variable instances as a dict with Python-native values.
 
         Defaults to the current instance in scope.
@@ -59,10 +59,10 @@ class HistoryKeywords:
             .processInstanceId(instance_id)
             .list()
         )
-        result: dict[str, object] = {}
+        result: dict[str, NativeValue] = {}
         for i in range(int(variables.size())):
             var = variables.get(i)
-            val: object = var.getValue()
+            val: NativeValue = var.getValue()  # type: ignore[assignment]  # interop → Python native
             # Ensure value is Python-native for Remote protocol compatibility
             if val is not None and not isinstance(
                 val, (str, int, float, bool, list, dict)

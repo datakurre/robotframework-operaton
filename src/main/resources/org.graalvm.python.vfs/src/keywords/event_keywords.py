@@ -1,7 +1,7 @@
 from robot.api.deco import keyword
 from typing import TYPE_CHECKING
 
-from keywords.base import Variables, except_interop_exception
+from keywords.base import Variables, VariableValue, except_interop_exception
 
 
 if TYPE_CHECKING:
@@ -15,7 +15,10 @@ class EventKeywords:
     @keyword
     @except_interop_exception
     def correlate_message(
-        self, message_name: str, process_instance_id: str = "", **variables: object
+        self,
+        message_name: str,
+        process_instance_id: str = "",
+        **variables: VariableValue,
     ) -> None:
         """Correlates a message to a process instance.
 
@@ -38,7 +41,10 @@ class EventKeywords:
     @keyword
     @except_interop_exception
     def send_message(
-        self, message_name: str, process_instance_id: str = "", **variables: object
+        self,
+        message_name: str,
+        process_instance_id: str = "",
+        **variables: VariableValue,
     ) -> None:
         """Alias for Correlate Message."""
         self.correlate_message(message_name, process_instance_id, **variables)

@@ -9,6 +9,7 @@ from robotlibcore import DynamicCore
 
 from keywords.base import (
     InteropObject,
+    VariableValue,
     java,
     Variables,
     except_interop_exception,
@@ -397,7 +398,7 @@ class Operaton(DynamicCore):
         name: str = "",
         process_instance_id: str = "",
         user_id: str = "",
-        **variables: object,
+        **variables: VariableValue,
     ) -> None:
         """Completes the active user task for the process instance.
 
@@ -445,7 +446,7 @@ class Operaton(DynamicCore):
     def set_process_variable(
         self,
         variable_name: str,
-        variable_value: object | None = None,
+        variable_value: VariableValue = None,
         process_instance_id: str = "",
     ) -> None:
         """Sets a process variable.
@@ -462,7 +463,7 @@ class Operaton(DynamicCore):
     def set_date_process_variable(
         self,
         variable_name: str,
-        variable_value: object,
+        variable_value: str,
         pattern: str = "yyyy-MM-dd'T'HH:mm:ssX",
         process_instance_id: str = "",
     ) -> None:
@@ -511,7 +512,7 @@ class Operaton(DynamicCore):
         process_definition_key: str,
         business_key: str = "",
         user_id: str = "",
-        **variables: object,
+        **variables: VariableValue,
     ) -> str:
         """Starts a process instance with the given variables and stores it as the current instance.
 
@@ -547,7 +548,7 @@ class Operaton(DynamicCore):
         activity_id: str,
         business_key: str = "",
         user_id: str = "",
-        **variables: object,
+        **variables: VariableValue,
     ) -> str:
         """Starts a process instance and places the token immediately before *activity_id*.
 

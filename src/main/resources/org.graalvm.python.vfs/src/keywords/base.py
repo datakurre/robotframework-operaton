@@ -39,6 +39,10 @@ else:
 __all__ = [
     "InteropObject",
     "Variables",
+    "VariableValue",
+    "DmnValue",
+    "ScalarValue",
+    "NativeValue",
     "except_interop_exception",
     "with_authenticated_user",
     "java",
@@ -58,6 +62,19 @@ except Exception:
 
 
 Variables = java.type("org.operaton.bpm.engine.variable.Variables")
+
+# Domain type aliases
+VariableValue = str | int | float | bool | InteropObject | None
+"""Any value that can be stored as a process/task variable."""
+
+DmnValue = str | int | float | bool | None
+"""A single DMN FEEL output cell (String/Integer/Long/Double/Boolean or null)."""
+
+ScalarValue = str | int | float | bool | None
+"""A Python-native scalar value after conversion from Java."""
+
+NativeValue = str | int | float | bool | list[object] | dict[str, object] | None
+"""A fully-converted Python-native value including collections."""
 
 P = ParamSpec("P")
 R = TypeVar("R")
