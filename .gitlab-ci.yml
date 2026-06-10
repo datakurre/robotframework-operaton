@@ -49,12 +49,9 @@ check:
   stage: test
   <<: [*devenv-job, *maven-cache]
   script:
-    # Formatting gate.
-    - devenv shell --no-eval-cache -- treefmt --ci
-    # Python type-check gate.
+    - devenv shell --no-eval-cache -- make format-check
     - devenv shell --no-eval-cache -- make mypy
-    # Compile-only gate: validates Java + test sources without executing tests.
-    - devenv shell --no-eval-cache -- mvn -q -DskipTests test-compile
+    - devenv shell --no-eval-cache -- make compile
   except:
     - tags   # release job below covers tag pipelines
 
@@ -63,14 +60,8 @@ test:
   <<: [*devenv-job, *maven-cache]
   # Blocking Robot gate + report collector.
   script:
-    # Compile test classpath and run Robot suites with rich report output.
-    - devenv shell --no-eval-cache -- mvn -q -DskipTests test-compile
-    - mkdir -p robot-results
-    - >
-      devenv shell --no-eval-cache -- mvn -q exec:exec
-      -Dexec.executable=java
-      -Dexec.classpathScope=test
-      "-Dexec.args=-cp %classpath org.operaton.bpm.extension.robot.Robot --outputdir robot-results src/test/resources/example"
+    - devenv shell --no-eval-cache -- make compile
+    - devenv shell --no-eval-cache -- make ci-robot OUTPUTDIR=robot-results SUITE=src/test/resources/example
   artifacts:
     when: always
     expire_in: 2 weeks
@@ -103,25 +94,19 @@ build-release:
     - sed -i "s/^version = .*/version = \"$VERSION\"/" python/pyproject.toml
 
     # Full test run.
-    - devenv shell --no-eval-cache -- mvn test
+    - devenv shell --no-eval-cache -- make test
 
     # Build fat JAR (standard — no Vasara classes).
-    - devenv shell --no-eval-cache -- mvn -Pshade package -DskipTests
+    - devenv shell --no-eval-cache -- make dist-fat
 
     # Build Vasara fat JAR (includes fi.jyu.vasara.* form customizations).
-    - devenv shell --no-eval-cache -- mvn -Pshade-vasara package -DskipTests
+    - devenv shell --no-eval-cache -- make dist-vasara
 
-    # Generate Operaton.libspec using Maven's managed test classpath.
-    - mkdir -p docs
-    - >
-      devenv shell --no-eval-cache -- mvn -q exec:exec
-      -Dexec.executable=java
-      -Dexec.classpathScope=test
-      "-Dexec.args=-cp %classpath org.operaton.bpm.extension.robot.Libdoc docs/Operaton.libspec"
+    # Generate Operaton.libspec.
+    - devenv shell --no-eval-cache -- make dist-libspec
 
     # Build CPython proxy wheel.
-    - devenv shell --no-eval-cache -- python3 -m pip install --quiet --user build
-    - devenv shell --no-eval-cache -- python3 -m build --wheel --outdir python/dist/ python/
+    - devenv shell --no-eval-cache -- make dist-wheel
 
     # Upload artefacts to the GitLab Generic Package Registry.
     - FAT_JAR="target/operaton-bpm-extension-robot-${VERSION}-fat.jar"
@@ -219,22 +204,11 @@ pages:
     - main
   script:
     # Build the project (skip tests for speed).
-    - devenv shell --no-eval-cache -- mvn -q -DskipTests package
+    - devenv shell --no-eval-cache -- make build
 
-    # Generate the HTML keyword reference.
-    - mkdir -p public
-    - >
-      devenv shell --no-eval-cache -- mvn -q exec:exec
-      -Dexec.executable=java
-      -Dexec.classpathScope=test
-      "-Dexec.args=-cp %classpath org.operaton.bpm.extension.robot.Libdoc public/Operaton.html"
-
-    # Generate the libspec file for RobotCode keyword discovery.
-    - >
-      devenv shell --no-eval-cache -- mvn -q exec:exec
-      -Dexec.executable=java
-      -Dexec.classpathScope=test
-      "-Dexec.args=-cp %classpath org.operaton.bpm.extension.robot.Libdoc public/Operaton.libspec"
+    # Generate the HTML keyword reference and libspec.
+    - devenv shell --no-eval-cache -- make dist-docs DOCS_DIR=public
+    - devenv shell --no-eval-cache -- make dist-libspec DOCS_DIR=public
 
     # Add a minimal index.html that redirects to the keyword reference.
     - |

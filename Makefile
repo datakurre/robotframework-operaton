@@ -52,19 +52,21 @@ dist-native:  ## Native binary via GraalVM native-image (slow)
 
 .PHONY: dist-wheel
 dist-wheel:  ## CPython proxy wheel → python/dist/
-	cd python && pip wheel --no-deps -w dist .
+	python3 -m build --wheel --outdir python/dist/ python/
+
+DOCS_DIR ?= docs
 
 .PHONY: dist-docs
-dist-docs:  ## Keyword HTML reference → docs/Operaton.html
-	mkdir -p docs
+dist-docs:  ## Keyword HTML reference → $(DOCS_DIR)/Operaton.html  [DOCS_DIR=docs]
+	mkdir -p $(DOCS_DIR)
 	mvn -q -DskipTests package
-	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Libdoc docs/Operaton.html"
+	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Libdoc $(DOCS_DIR)/Operaton.html"
 
 .PHONY: dist-libspec
-dist-libspec:  ## Keyword spec for RobotCode LSP → docs/Operaton.libspec
-	mkdir -p docs
+dist-libspec:  ## Keyword spec for RobotCode LSP → $(DOCS_DIR)/Operaton.libspec  [DOCS_DIR=docs]
+	mkdir -p $(DOCS_DIR)
 	mvn -q -DskipTests package
-	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Libdoc docs/Operaton.libspec"
+	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Libdoc $(DOCS_DIR)/Operaton.libspec"
 
 .PHONY: clean
 clean:  ## mvn clean
@@ -114,6 +116,10 @@ _nix-venv-bootstrap:
 	    grep -qxF "$$entry" "$$LIST" || echo "$$entry" >> "$$LIST"; \
 	done
 
+.PHONY: compile
+compile:  ## Compile Java + test sources (no tests executed)
+	mvn -q -DskipTests test-compile
+
 .PHONY: test
 test:  ## Run all JUnit + Robot suites
 	mvn test
@@ -144,6 +150,12 @@ run-native:  ## Native binary runner
 .PHONY: robot
 robot:  ## Maven classpath runner (no pre-built JAR needed)
 	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Robot ${SUITE}"
+
+OUTPUTDIR ?= robot-results
+.PHONY: ci-robot
+ci-robot:  ## Maven classpath runner with --outputdir for CI  [OUTPUTDIR=robot-results SUITE=path]
+	mkdir -p $(OUTPUTDIR)
+	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Robot --outputdir $(OUTPUTDIR) $(SUITE)"
 
 ##@ Watch  (SUITE= optional; .py changes recreate context in ~2-3 s)
 
