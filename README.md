@@ -12,15 +12,16 @@ clock, assert on history and incidents — without leaving your test suite.
 
 Two fat JARs are published with every release:
 
-| Classifier | File | Contents |
-|---|---|---|
-| `fat` | `operaton-bpm-extension-robot-<version>-fat.jar` | Standard distribution — all core keywords |
-| `vasara` | `operaton-bpm-extension-robot-<version>-vasara.jar` | Vasara form customizations included (`fi.jyu.vasara.*`) |
+| Classifier | File                                                | Contents                                                |
+| ---------- | --------------------------------------------------- | ------------------------------------------------------- |
+| `fat`      | `operaton-bpm-extension-robot-<version>-fat.jar`    | Standard distribution — all core keywords               |
+| `vasara`   | `operaton-bpm-extension-robot-<version>-vasara.jar` | Vasara form customizations included (`fi.jyu.vasara.*`) |
 
 **Standard JAR** (`-fat.jar`) — use this for projects that manage form field
 types and validators themselves.
 
 **Vasara JAR** (`-vasara.jar`) — automatically activates when on the classpath:
+
 - Custom form field types: `json` (Spin-backed), null-safe `date`, flexible `number` (Long/Double/String)
 - No-op `pattern` and `type` validators (form submission never blocked by constraint mismatches)
 - BPMN parse listeners that pre-initialise start event and user task form variables and inject a `taskAssignee` local variable on assignment
@@ -105,6 +106,13 @@ make dist-vasara    # → target/*-vasara.jar
 make dist-libspec   # → docs/Operaton.libspec
 ```
 
+Format checks are standardized via treefmt:
+
+```sh
+devenv shell --no-eval-cache -- make format        # apply formatting
+devenv shell --no-eval-cache -- make format-check  # verify formatting (CI mode)
+```
+
 ### 2. Install the CPython proxy
 
 ```sh
@@ -157,6 +165,7 @@ Use the **[vscode-operaton-robotframework](https://gitlab.com/vasara-bpm/vscode-
 2. Run **Operaton Robot: Start Remote Server**
 
 The extension:
+
 - Spawns the JVM server in a visible VS Code terminal (you can see logs)
 - Auto-selects a free port (no conflicts)
 - Updates `robot.toml` with `OPERATON_REMOTE = "http://127.0.0.1:<port>"` automatically
@@ -243,9 +252,9 @@ JAVA_OPTS="-Xmx2g" java -jar operaton-bpm-extension-robot-1.0-fat.jar path/to/Su
 context is recreated (~2–3 s) and updated sources are loaded from disk when
 `--py-src` points at the on-disk VFS source directory.
 
-| Flag | Default | Description |
-|---|---|---|
-| `--watch [path]` | `src/test/resources/example` | Suite file or directory to watch and run |
+| Flag             | Default                                                                 | Description                                   |
+| ---------------- | ----------------------------------------------------------------------- | --------------------------------------------- |
+| `--watch [path]` | `src/test/resources/example`                                            | Suite file or directory to watch and run      |
 | `--py-src <dir>` | auto-detected if `src/main/resources/org.graalvm.python.vfs/src` exists | Load Python keywords from disk instead of VFS |
 
 ---
@@ -298,21 +307,21 @@ JAVA_OPTS="-Xmx2g" nix run . -- src/test/resources/example/Example.robot
 
 The `Operaton` library exposes ~44 keywords. The most common ones:
 
-| Group | Keywords | JAR |
-|---|---|---|
-| Engine lifecycle | `Setup Process Engine`, `Teardown Process Engine` | both |
-| Deployment | `Deploy Resources` | both |
-| Instances | `Start Instance`, `Start Instance With Variables`, `Suspend Instance`, `Activate Instance` | both |
-| Tasks | `Should Have Task`, `Complete Task`, `Get Tasks`, `Should Have N Active Tasks` | both |
-| Variables | `Get Variable`, `Set Variable`, typed `Create Integer/Double/Boolean/Date Variable` | both |
-| Assertions | `Should Be Active`, `Should Be Suspended`, `Should Be Ended`, `Should Have Incident` | both |
-| Events | `Correlate Message`, `Send Message`, `Signal Event`, `Throw Signal` | both |
-| External tasks | `Fetch And Lock`, `Complete External Task`, `Throw Bpmn Error` | both |
-| DMN | `Evaluate Decision`, `Evaluate Decision Table`, `Decision Result Should Contain`, `Decision Single Result`, `Decision Single Entry`, `Collect Entries` | both |
-| Clock / timers | `Set Clock`, `Advance Clock`, `Reset Clock`, `Execute Timer Jobs` | both |
-| History | `Get Completed Instances`, `Get Historic Variables` | both |
-| Visualization *(Node.js required)* | `Log Bpmn Execution`, `Log Dmn Result` | both |
-| Forms (Vasara) | `Submit Task Form`, `Get Task Form Variables` | vasara only |
+| Group                              | Keywords                                                                                                                                               | JAR         |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------- |
+| Engine lifecycle                   | `Setup Process Engine`, `Teardown Process Engine`                                                                                                      | both        |
+| Deployment                         | `Deploy Resources`                                                                                                                                     | both        |
+| Instances                          | `Start Instance`, `Start Instance With Variables`, `Suspend Instance`, `Activate Instance`                                                             | both        |
+| Tasks                              | `Should Have Task`, `Complete Task`, `Get Tasks`, `Should Have N Active Tasks`                                                                         | both        |
+| Variables                          | `Get Variable`, `Set Variable`, typed `Create Integer/Double/Boolean/Date Variable`                                                                    | both        |
+| Assertions                         | `Should Be Active`, `Should Be Suspended`, `Should Be Ended`, `Should Have Incident`                                                                   | both        |
+| Events                             | `Correlate Message`, `Send Message`, `Signal Event`, `Throw Signal`                                                                                    | both        |
+| External tasks                     | `Fetch And Lock`, `Complete External Task`, `Throw Bpmn Error`                                                                                         | both        |
+| DMN                                | `Evaluate Decision`, `Evaluate Decision Table`, `Decision Result Should Contain`, `Decision Single Result`, `Decision Single Entry`, `Collect Entries` | both        |
+| Clock / timers                     | `Set Clock`, `Advance Clock`, `Reset Clock`, `Execute Timer Jobs`                                                                                      | both        |
+| History                            | `Get Completed Instances`, `Get Historic Variables`                                                                                                    | both        |
+| Visualization _(Node.js required)_ | `Log Bpmn Execution`, `Log Dmn Result`                                                                                                                 | both        |
+| Forms (Vasara)                     | `Submit Task Form`, `Get Task Form Variables`                                                                                                          | vasara only |
 
 The full library source is [src/main/resources/org.graalvm.python.vfs/src/Operaton.py](src/main/resources/org.graalvm.python.vfs/src/Operaton.py).
 
@@ -337,13 +346,13 @@ java -jar operaton-bpm-extension-robot-1.0-fat.jar \
 nix run . -- --loglevel DEBUG src/test/resources/example/Example.robot
 ```
 
-The `--loglevel` value controls Robot Framework's own output verbosity *and*
+The `--loglevel` value controls Robot Framework's own output verbosity _and_
 gates the Operaton/Java log level simultaneously:
 
-| `--loglevel` value | Robot output | Operaton engine logs |
-|---|---|---|
-| *(not set)* / `INFO` / `WARN` | default | suppressed (WARN+) |
-| `DEBUG` or `TRACE` | verbose | INFO+ (full engine output) |
+| `--loglevel` value            | Robot output | Operaton engine logs       |
+| ----------------------------- | ------------ | -------------------------- |
+| _(not set)_ / `INFO` / `WARN` | default      | suppressed (WARN+)         |
+| `DEBUG` or `TRACE`            | verbose      | INFO+ (full engine output) |
 
 ---
 

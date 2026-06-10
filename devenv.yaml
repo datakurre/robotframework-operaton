@@ -1,2 +1,16 @@
-# yaml-language-server: $schema=https://devenv.sh/devenv.schema.json
+inputs:
+  devenv-module-devcontainer:
+    url: gitlab:vasara-bpm/devenv-module-devcontainer
+    flake: false
+  devenv-module-devcontainer-nixpkgs:
+    url: github:nixos/nixpkgs/nixos-unstable
+  git-hooks:
+    url: github:cachix/git-hooks.nix
+    inputs:
+      nixpkgs:
+        follows: nixpkgs
+  treefmt-nix:
+    url: github:numtide/treefmt-nix
+imports:
+  - devenv-module-devcontainer
 profile: shell

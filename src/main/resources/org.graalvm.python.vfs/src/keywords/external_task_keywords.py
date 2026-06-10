@@ -11,8 +11,13 @@ class ExternalTaskKeywords:
 
     @keyword
     @except_interop_exception
-    def fetch_and_lock(self, topic: str, worker_id: str = "robot-worker",
-                       max_tasks: Any = 1, lock_duration: Any = 10000):
+    def fetch_and_lock(
+        self,
+        topic: str,
+        worker_id: str = "robot-worker",
+        max_tasks: Any = 1,
+        lock_duration: Any = 10000,
+    ):
         """Fetches and locks external tasks for the given topic.
 
         Returns a list of external task IDs.
@@ -23,9 +28,11 @@ class ExternalTaskKeywords:
         """
         assert self.ctx.engine, "No engine"
         external_task_service = self.ctx.engine.getExternalTaskService()
-        tasks = external_task_service.fetchAndLock(
-            int(str(max_tasks)), worker_id
-        ).topic(topic, int(str(lock_duration))).execute()
+        tasks = (
+            external_task_service.fetchAndLock(int(str(max_tasks)), worker_id)
+            .topic(topic, int(str(lock_duration)))
+            .execute()
+        )
         result = []
         for i in range(int(tasks.size())):
             result.append(str(tasks.get(i).getId()))
@@ -33,8 +40,9 @@ class ExternalTaskKeywords:
 
     @keyword
     @except_interop_exception
-    def complete_external_task(self, external_task_id: str,
-                               worker_id: str = "robot-worker", **variables: Any):
+    def complete_external_task(
+        self, external_task_id: str, worker_id: str = "robot-worker", **variables: Any
+    ):
         """Completes an external task by its ID.
 
         Example usage in Robot::
@@ -55,9 +63,13 @@ class ExternalTaskKeywords:
 
     @keyword
     @except_interop_exception
-    def throw_bpmn_error(self, external_task_id: str, error_code: str,
-                         error_message: str = "",
-                         worker_id: str = "robot-worker"):
+    def throw_bpmn_error(
+        self,
+        external_task_id: str,
+        error_code: str,
+        error_message: str = "",
+        worker_id: str = "robot-worker",
+    ):
         """Throws a BPMN error for an external task, triggering error boundary events.
 
         Example usage in Robot::

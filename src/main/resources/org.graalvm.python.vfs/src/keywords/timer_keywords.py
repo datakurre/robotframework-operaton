@@ -115,19 +115,23 @@ class TimerKeywords:
         topic: str,
         process_instance_id: str = "",
         worker_id: str = "robot-worker",
-        **variables: Any) -> int:
-        """Completes one external task for the given topic and executes pending jobs before and after.
-        """
+        **variables: Any,
+    ) -> int:
+        """Completes one external task for the given topic and executes pending jobs before and after."""
         assert self.ctx.engine, "No engine"
 
         instance_id = process_instance_id or self.ctx._current_instance_id
-        assert instance_id, "No process instance id provided and no current instance in scope"
+        assert (
+            instance_id
+        ), "No process instance id provided and no current instance in scope"
 
         # Complete async-before jobs etc.
         self.execute_jobs(instance_id)
 
         external_task_service = self.ctx.engine.getExternalTaskService()
-        fetch_and_lock = external_task_service.fetchAndLock(1, worker_id).topic(topic, 1000)
+        fetch_and_lock = external_task_service.fetchAndLock(1, worker_id).topic(
+            topic, 1000
+        )
         tasks = fetch_and_lock.execute()
 
         matching_task = None
@@ -138,9 +142,9 @@ class TimerKeywords:
                 matching_task = task
                 break
 
-        assert matching_task, (
-            f"No external task found for topic '{topic}' in process instance {instance_id}"
-        )
+        assert (
+            matching_task
+        ), f"No external task found for topic '{topic}' in process instance {instance_id}"
 
         if variables:
             var_map = Variables.createVariables()

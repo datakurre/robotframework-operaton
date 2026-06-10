@@ -8,6 +8,51 @@ variables:
     -Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository
     -Dmaven.artifact.threads=4
     -Dpolyglot.engine.WarnInterpreterOnly=false
+  NIX_CACHE: "https://cache.nixos.org"
+
+.devenv-job: &devenv-job
+  image: ghcr.io/cachix/devenv/devenv:latest
+  tags:
+    - executor-podman
+  before_script:
+    - |
+      run_devenv() {
+        if [ -n "${NETRC:-}" ] && [ -n "${NIX_CACHE:-}" ]; then
+          devenv shell --no-eval-cache \
+            --nix-option extra-sandbox-paths "${NETRC}" \
+            --nix-option netrc-file "${NETRC}" \
+            --nix-option substituters "${NIX_CACHE}?trusted=true" \
+            -- "$@"
+        else
+          devenv shell --no-eval-cache -- "$@"
+        fi
+      }
+
+      if [ -n "${M2_SETTINGS:-}" ] && [ -f "${M2_SETTINGS}" ]; then
+        mkdir -p "${HOME}/.m2"
+        cp "${M2_SETTINGS}" "${HOME}/.m2/settings.xml"
+        chmod 600 "${HOME}/.m2/settings.xml"
+      fi
+
+      if [ -n "${NETRC:-}" ] && [ -n "${NIX_CACHE:-}" ]; then
+        export NIX_CONFIG="$(printf 'accept-flake-config = true\nextra-sandbox-paths = %s\nnetrc-file = %s\nsubstituters = %s?trusted=true' "${NETRC}" "${NETRC}" "${NIX_CACHE}")"
+      else
+        export NIX_CONFIG="accept-flake-config = true"
+      fi
+  after_script:
+    - |
+      if [ -n "${NETRC:-}" ] && [ -n "${NIX_CACHE:-}" ] && [ -e .devenv/profiles/shell/profile ]; then
+        nix-store -qR "$(readlink -f .devenv/profiles/shell/profile)" | \
+          xargs nix copy --accept-flake-config --option extra-sandbox-paths "${NETRC}" --option netrc-file "${NETRC}" --option substituters "${NIX_CACHE}?trusted=true" --to "${NIX_CACHE}" || \
+          echo "Nix cache push failed; continuing without failing job."
+      else
+        [ -z "${NETRC:-}" ] && echo "Skipping Nix cache push: NETRC is not set."
+        [ -z "${NIX_CACHE:-}" ] && echo "Skipping Nix cache push: NIX_CACHE is not set."
+        if [ ! -e .devenv/profiles/shell/profile ]; then
+          echo "Skipping Nix cache push: .devenv/profiles/shell/profile is missing."
+          [ -d .devenv/profiles/shell ] && ls -la .devenv/profiles/shell || echo "Directory .devenv/profiles/shell does not exist."
+        fi
+      fi
 
 # ── Cache Maven local repository across jobs/pipelines ────────────────────────
 # The graalpy-maven-plugin downloads Python wheels into ~/.m2 on first build;
@@ -22,35 +67,18 @@ variables:
 
 check:
   stage: test
-  image: maven:3-eclipse-temurin-21
-  tags:
-    - executor-podman
-  <<: *maven-cache
+  <<: [*devenv-job, *maven-cache]
   script:
-    # Compile-only gate: validates Java + test sources without executing tests.
-    - mvn -q -DskipTests test-compile
+    - run_devenv make format-check
+    - run_devenv make mypy
   except:
-    - tags   # release job below covers tag pipelines
+    - tags # release job below covers tag pipelines
 
 test:
   stage: test
-  image: maven:3-eclipse-temurin-21
-  tags:
-    - executor-podman
-  # Blocking Robot gate + report collector.
-  <<: *maven-cache
-  before_script:
-    # Enable BPMN/DMN rendering during Robot suites.
-    - apt-get update -qq && apt-get install -y -qq nodejs npm
+  <<: [*devenv-job, *maven-cache]
   script:
-    # Compile test classpath and run Robot suites with rich report output.
-    - mvn -q -DskipTests test-compile
-    - mkdir -p robot-results
-    - >
-      mvn -q exec:exec
-      -Dexec.executable=java
-      -Dexec.classpathScope=test
-      "-Dexec.args=-cp %classpath org.operaton.bpm.extension.robot.Robot --outputdir robot-results src/test/resources/example"
+    - run_devenv make test
   artifacts:
     when: always
     expire_in: 2 weeks
@@ -69,44 +97,33 @@ test:
 
 build-release:
   stage: release
-  image: maven:3-eclipse-temurin-21
-  tags:
-    - executor-podman
-  <<: *maven-cache
+  <<: [*devenv-job, *maven-cache]
   only:
     - tags
-  before_script:
-    - apt-get update -qq && apt-get install -y -qq python3 python3-pip python3-venv curl
-    - pip3 install --quiet --break-system-packages build
   script:
     - VERSION=${CI_COMMIT_TAG#v}
     - echo "VERSION=$VERSION" >> release.env
 
     # Set Maven project version to match the tag.
-    - mvn -q versions:set -DnewVersion=$VERSION -DgenerateBackupPoms=false
+    - run_devenv mvn -q versions:set -DnewVersion=$VERSION -DgenerateBackupPoms=false
 
     # Set Python proxy version to match the tag.
     - sed -i "s/^version = .*/version = \"$VERSION\"/" python/pyproject.toml
 
     # Full test run.
-    - mvn test
+    - run_devenv make test
 
     # Build fat JAR (standard — no Vasara classes).
-    - mvn -Pshade package -DskipTests
+    - run_devenv make dist-fat
 
     # Build Vasara fat JAR (includes fi.jyu.vasara.* form customizations).
-    - mvn -Pshade-vasara package -DskipTests
+    - run_devenv make dist-vasara
 
-    # Generate Operaton.libspec using Maven's managed test classpath.
-    - mkdir -p docs
-    - >
-      mvn -q exec:exec
-      -Dexec.executable=java
-      -Dexec.classpathScope=test
-      "-Dexec.args=-cp %classpath org.operaton.bpm.extension.robot.Libdoc docs/Operaton.libspec"
+    # Generate Operaton.libspec.
+    - run_devenv make dist-libspec
 
     # Build CPython proxy wheel.
-    - python3 -m build --wheel --outdir python/dist/ python/
+    - run_devenv make dist-wheel
 
     # Upload artefacts to the GitLab Generic Package Registry.
     - FAT_JAR="target/operaton-bpm-extension-robot-${VERSION}-fat.jar"
@@ -146,9 +163,7 @@ build-release:
 
 publish-release:
   stage: release
-  image: registry.gitlab.com/gitlab-org/release-cli:latest
-  tags:
-    - executor-podman
+  <<: *devenv-job
   needs:
     - job: build-release
       artifacts: true
@@ -156,24 +171,44 @@ publish-release:
     - tags
   script:
     - echo "Creating release for $CI_COMMIT_TAG (version $VERSION)"
-  release:
-    tag_name: $CI_COMMIT_TAG
-    name: "operaton-robot $CI_COMMIT_TAG"
-    description: "See [CHANGELOG](CHANGELOG.md) for details."
-    assets:
-      links:
-        - name: "Fat JAR (standard)"
-          url: "$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/operaton-robot/$VERSION/operaton-bpm-extension-robot-$VERSION-fat.jar"
-          link_type: package
-        - name: "Fat JAR (Vasara form customizations)"
-          url: "$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/operaton-robot/$VERSION/operaton-bpm-extension-robot-$VERSION-vasara.jar"
-          link_type: package
-        - name: "Operaton.libspec (RobotCode keyword discovery)"
-          url: "$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/operaton-robot/$VERSION/Operaton.libspec"
-          link_type: other
-        - name: "CPython proxy wheel"
-          url: "$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/operaton-robot/$VERSION/robotframework_operaton-$VERSION-py3-none-any.whl"
-          link_type: package
+    - |
+      cat > release.json <<EOF
+      {
+        "tag_name": "${CI_COMMIT_TAG}",
+        "name": "operaton-robot ${CI_COMMIT_TAG}",
+        "description": "See [CHANGELOG](CHANGELOG.md) for details.",
+        "assets": {
+          "links": [
+            {
+              "name": "Fat JAR (standard)",
+              "url": "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/operaton-robot/${VERSION}/operaton-bpm-extension-robot-${VERSION}-fat.jar",
+              "link_type": "package"
+            },
+            {
+              "name": "Fat JAR (Vasara form customizations)",
+              "url": "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/operaton-robot/${VERSION}/operaton-bpm-extension-robot-${VERSION}-vasara.jar",
+              "link_type": "package"
+            },
+            {
+              "name": "Operaton.libspec (RobotCode keyword discovery)",
+              "url": "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/operaton-robot/${VERSION}/Operaton.libspec",
+              "link_type": "other"
+            },
+            {
+              "name": "CPython proxy wheel",
+              "url": "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/operaton-robot/${VERSION}/robotframework_operaton-${VERSION}-py3-none-any.whl",
+              "link_type": "package"
+            }
+          ]
+        }
+      }
+      EOF
+    - >
+      curl --silent --show-error --fail
+      --header "JOB-TOKEN: $CI_JOB_TOKEN"
+      --header "Content-Type: application/json"
+      --data @release.json
+      "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/releases"
 
 # ── GitLab Pages ──────────────────────────────────────────────────────────────
 # Publishes keyword reference (Operaton.html) and Operaton.libspec on every
@@ -181,30 +216,16 @@ publish-release:
 
 pages:
   stage: pages
-  image: maven:3-eclipse-temurin-21
-  tags:
-    - executor-podman
-  <<: *maven-cache
+  <<: [*devenv-job, *maven-cache]
   only:
     - main
   script:
     # Build the project (skip tests for speed).
-    - mvn -q -DskipTests package
+    - run_devenv make build
 
-    # Generate the HTML keyword reference.
-    - mkdir -p public
-    - >
-      mvn -q exec:exec
-      -Dexec.executable=java
-      -Dexec.classpathScope=test
-      "-Dexec.args=-cp %classpath org.operaton.bpm.extension.robot.Libdoc public/Operaton.html"
-
-    # Generate the libspec file for RobotCode keyword discovery.
-    - >
-      mvn -q exec:exec
-      -Dexec.executable=java
-      -Dexec.classpathScope=test
-      "-Dexec.args=-cp %classpath org.operaton.bpm.extension.robot.Libdoc public/Operaton.libspec"
+    # Generate the HTML keyword reference and libspec.
+    - run_devenv make dist-docs DOCS_DIR=public
+    - run_devenv make dist-libspec DOCS_DIR=public
 
     # Add a minimal index.html that redirects to the keyword reference.
     - |

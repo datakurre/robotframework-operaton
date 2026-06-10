@@ -8,6 +8,7 @@ from keywords.base import Variables, except_interop_exception
 try:
     import java  # pyright: ignore
 except ImportError:
+
     class java:
         @staticmethod
         def type(klass: str) -> Any:
@@ -86,7 +87,9 @@ class DmnKeywords:
 
     @keyword
     @except_interop_exception
-    def decision_result_should_contain(self, result: Any, output_name: str, expected_value: Any):
+    def decision_result_should_contain(
+        self, result: Any, output_name: str, expected_value: Any
+    ):
         """Asserts that at least one row in the decision result contains
         the expected value for the given output name.
 
@@ -118,9 +121,9 @@ class DmnKeywords:
             ${result}=    Evaluate Decision    discount    customerType=gold
             ${row}=    Decision Single Result    ${result}
         """
-        assert len(result) == 1, (
-            f"Expected exactly 1 matched rule, but got {len(result)}: {result}"
-        )
+        assert (
+            len(result) == 1
+        ), f"Expected exactly 1 matched rule, but got {len(result)}: {result}"
         return result[0]
 
     @keyword
@@ -135,13 +138,13 @@ class DmnKeywords:
             ${discount}=    Decision Single Entry    ${result}
             Should Be Equal As Numbers    ${discount}    15
         """
-        assert len(result) == 1, (
-            f"Expected exactly 1 matched rule, but got {len(result)}: {result}"
-        )
+        assert (
+            len(result) == 1
+        ), f"Expected exactly 1 matched rule, but got {len(result)}: {result}"
         row = result[0]
-        assert len(row) == 1, (
-            f"Expected exactly 1 output column, but got {len(row)}: {row}"
-        )
+        assert (
+            len(row) == 1
+        ), f"Expected exactly 1 output column, but got {len(row)}: {row}"
         return next(iter(row.values()))
 
     @keyword
@@ -172,12 +175,11 @@ class DmnKeywords:
         """
         assert self.ctx.engine, "No engine"
         repository = self.ctx.engine.getRepositoryService()
-        query = repository.createDecisionDefinitionQuery() \
-            .decisionDefinitionKey(decision_key)
-        result = query.singleResult()
-        assert result is not None, (
-            f"Decision definition '{decision_key}' not found"
+        query = repository.createDecisionDefinitionQuery().decisionDefinitionKey(
+            decision_key
         )
+        result = query.singleResult()
+        assert result is not None, f"Decision definition '{decision_key}' not found"
         return str(result.getId())
 
     @keyword
@@ -200,9 +202,7 @@ class DmnKeywords:
         """
         assert self.ctx.engine, "No engine"
 
-        BpmnRenderer = java.type(
-            "org.operaton.bpm.extension.robot.BpmnRenderer"
-        )
+        BpmnRenderer = java.type("org.operaton.bpm.extension.robot.BpmnRenderer")
         if not BpmnRenderer.isNodeAvailable():
             print(
                 f"*WARN* DMN rendering skipped: 'node' not found on PATH "
@@ -218,9 +218,7 @@ class DmnKeywords:
             .latestVersion()
             .singleResult()
         )
-        assert definition is not None, (
-            f"Decision definition '{decision_key}' not found"
-        )
+        assert definition is not None, f"Decision definition '{decision_key}' not found"
         definition_id = str(definition.getId())
 
         # Fetch DMN XML
@@ -259,11 +257,13 @@ class DmnKeywords:
                         seen.add(order)
 
         # Call Node.js renderer
-        input_json = json.dumps({
-            "dmn": dmn_xml,
-            "decisionId": decision_key,
-            "matchedRules": matched_orders,
-        })
+        input_json = json.dumps(
+            {
+                "dmn": dmn_xml,
+                "decisionId": decision_key,
+                "matchedRules": matched_orders,
+            }
+        )
 
         try:
             html = str(BpmnRenderer.renderDmnHtml(input_json))
@@ -276,11 +276,12 @@ class DmnKeywords:
             )
         except:  # noqa - bare except needed to catch GraalPy host exceptions
             import sys as _sys
+
             _exc = _sys.exc_info()[1]
             _msg = str(_exc) if _exc else "unknown error"
             try:
-                if hasattr(_exc, 'getMessage') and _exc.getMessage():
+                if hasattr(_exc, "getMessage") and _exc.getMessage():
                     _msg = str(_exc.getMessage())
             except Exception:
                 pass
-            print(f'*WARN* DMN rendering failed: {_msg}')
+            print(f"*WARN* DMN rendering failed: {_msg}")

@@ -13,6 +13,7 @@ except ImportError:
         def type(klass: str) -> Any:
             pass
 
+
 try:
     from robot.api import logger as _rf_logger  # pyright: ignore
 except Exception:
@@ -31,11 +32,11 @@ def except_interop_exception(func):
             exc_type, exc_value, exc_traceback = sys.exc_info()
             message = str(exc_value) if exc_value else "Unknown error"
             try:
-                if hasattr(exc_value, 'getMessage'):
+                if hasattr(exc_value, "getMessage"):
                     java_msg = exc_value.getMessage()
                     if java_msg:
                         message = str(java_msg)
-                if hasattr(exc_value, 'getStackTrace'):
+                if hasattr(exc_value, "getStackTrace"):
                     trace = exc_value.getStackTrace()
                     if trace:
                         frames = []
@@ -52,6 +53,7 @@ def except_interop_exception(func):
             except Exception:
                 pass
             assert False, message
+
     return wrapper
 
 

@@ -1,5 +1,4 @@
 JAVA = $(shell which java)
-JAVA_FILES := $(shell find . -name "*.java" -path "*/src/*" -not -path "./tmp/*" -type f)
 JAR := target/operaton-bpm-extension-robot-1.0-SNAPSHOT.jar
 JAR_FAT := target/operaton-bpm-extension-robot-1.0-SNAPSHOT-fat.jar
 JAR_VASARA := target/operaton-bpm-extension-robot-1.0-SNAPSHOT-vasara.jar
@@ -24,13 +23,13 @@ help:  ## Show this help
 # "No module named '_sysconfigdata__linux_x86_64-linux-gnu'".
 # This target pre-creates a stub module in any cached GraalPy python-home
 # directories so that ensurepip can succeed.
-# On a fresh machine the first build still fails (cache not yet populated);
-# run 'make build' a second time and it will succeed.
-_SYSCONFIGDATA_STUB := build_time_vars = {'SOABI': 'cpython-312-x86_64-linux-gnu', 'EXT_SUFFIX': '.cpython-312-x86_64-linux-gnu.so'}
+# On a fresh machine the cache can appear during the first Maven run;
+# compile/test targets therefore retry once after applying this patch again.
+_SYSCONFIGDATA_STUB := build_time_vars = {"SOABI": "cpython-312-x86_64-linux-gnu", "EXT_SUFFIX": ".cpython-312-x86_64-linux-gnu.so"}
 .PHONY: _fix-graalpy-sysconfig
 _fix-graalpy-sysconfig:
 	@for d in $(HOME)/.cache/org.graalvm.polyglot/python/python-home/*/lib/python3.12; do \
-	  if [ -d "$$d" ] && [ ! -f "$$d/_sysconfigdata__linux_x86_64-linux-gnu.py" ]; then \
+	  if [ -d "$$d" ]; then \
 	    printf '$(value _SYSCONFIGDATA_STUB)\n' > "$$d/_sysconfigdata__linux_x86_64-linux-gnu.py"; \
 	  fi; \
 	done; true
@@ -53,19 +52,21 @@ dist-native:  ## Native binary via GraalVM native-image (slow)
 
 .PHONY: dist-wheel
 dist-wheel:  ## CPython proxy wheel → python/dist/
-	cd python && pip wheel --no-deps -w dist .
+	python3 -m build --wheel --outdir python/dist/ python/
+
+DOCS_DIR ?= docs
 
 .PHONY: dist-docs
-dist-docs:  ## Keyword HTML reference → docs/Operaton.html
-	mkdir -p docs
+dist-docs:  ## Keyword HTML reference → $(DOCS_DIR)/Operaton.html  [DOCS_DIR=docs]
+	mkdir -p $(DOCS_DIR)
 	mvn -q -DskipTests package
-	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Libdoc docs/Operaton.html"
+	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Libdoc $(DOCS_DIR)/Operaton.html"
 
 .PHONY: dist-libspec
-dist-libspec:  ## Keyword spec for RobotCode LSP → docs/Operaton.libspec
-	mkdir -p docs
+dist-libspec:  ## Keyword spec for RobotCode LSP → $(DOCS_DIR)/Operaton.libspec  [DOCS_DIR=docs]
+	mkdir -p $(DOCS_DIR)
 	mvn -q -DskipTests package
-	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Libdoc docs/Operaton.libspec"
+	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Libdoc $(DOCS_DIR)/Operaton.libspec"
 
 .PHONY: clean
 clean:  ## mvn clean
@@ -115,13 +116,30 @@ _nix-venv-bootstrap:
 	    grep -qxF "$$entry" "$$LIST" || echo "$$entry" >> "$$LIST"; \
 	done
 
+.PHONY: compile
+compile: _fix-graalpy-sysconfig  ## Compile Java + test sources (no tests executed)
+	@mvn -q -DskipTests test-compile || { \
+	  echo "Retrying compile after applying GraalPy sysconfig stub..."; \
+	  $(MAKE) _fix-graalpy-sysconfig; \
+	  mvn -q -DskipTests test-compile; \
+	}
+
 .PHONY: test
-test:  ## Run all JUnit + Robot suites
-	mvn test
+test: _fix-graalpy-sysconfig  ## Run all JUnit + Robot suites
+	@mvn test || { \
+	  echo "Retrying tests after applying GraalPy sysconfig stub..."; \
+	  $(MAKE) _fix-graalpy-sysconfig; \
+	  mvn test; \
+	}
 
 .PHONY: check
 check:  ## mvn verify
 	mvn verify
+
+.PHONY: mypy
+mypy:  ## Run MyPy on Python sources
+	mypy --config-file mypy.ini python/src/Operaton
+	mypy --config-file mypy.ini --disable-error-code no-redef --disable-error-code var-annotated --disable-error-code assignment --disable-error-code union-attr src/main/resources/org.graalvm.python.vfs/src/Operaton.py src/main/resources/org.graalvm.python.vfs/src/keywords
 
 ##@ Run  (SUITE=path/to/Suite.robot)
 
@@ -140,6 +158,12 @@ run-native:  ## Native binary runner
 .PHONY: robot
 robot:  ## Maven classpath runner (no pre-built JAR needed)
 	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Robot ${SUITE}"
+
+OUTPUTDIR ?= robot-results
+.PHONY: ci-robot
+ci-robot:  ## Maven classpath runner with --outputdir for CI  [OUTPUTDIR=robot-results SUITE=path]
+	mkdir -p $(OUTPUTDIR)
+	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Robot --outputdir $(OUTPUTDIR) $(SUITE)"
 
 ##@ Watch  (SUITE= optional; .py changes recreate context in ~2-3 s)
 
@@ -225,8 +249,12 @@ remote-dev:  ## Maven classpath runner
 ##@ Misc
 
 .PHONY: format
-format:  ## google-java-format all Java source files
-	google-java-format -i $(JAVA_FILES)
+format:  ## Format sources with treefmt
+	treefmt
+
+.PHONY: format-check
+format-check:  ## Verify formatting with treefmt --ci
+	treefmt --ci
 
 .PHONY: install-proxy
 install-proxy:  ## pip install -e python/

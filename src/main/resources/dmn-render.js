@@ -57,7 +57,7 @@ function parseXml(xml) {
       const selfClosing = xml[tagEnd - 1] === "/";
       const tagContent = xml.substring(
         i + (closing ? 2 : 1),
-        selfClosing ? tagEnd - 1 : tagEnd
+        selfClosing ? tagEnd - 1 : tagEnd,
       );
 
       // Parse tag name and attributes
@@ -280,7 +280,7 @@ function renderDecisionTable(root, decisionId, matchedRules) {
   if (!decision) {
     throw new Error(
       `Decision '${decisionId}' not found in DMN. ` +
-        `Available: ${decisions.map((d) => d.attrs.id).join(", ")}`
+        `Available: ${decisions.map((d) => d.attrs.id).join(", ")}`,
     );
   }
 
@@ -288,7 +288,7 @@ function renderDecisionTable(root, decisionId, matchedRules) {
   const dt = findFirst(decision, "decisionTable");
   if (!dt) {
     throw new Error(
-      `Decision '${decisionId}' does not contain a decision table`
+      `Decision '${decisionId}' does not contain a decision table`,
     );
   }
 
@@ -302,7 +302,7 @@ function renderDecisionTable(root, decisionId, matchedRules) {
 
   // Check for annotations
   const hasAnnotations = rules.some(
-    (r) => directChildren(r, "description").length > 0
+    (r) => directChildren(r, "description").length > 0,
   );
 
   // Build HTML
@@ -314,20 +314,22 @@ function renderDecisionTable(root, decisionId, matchedRules) {
   const spanCount = totalCols + (hasAnnotations ? 1 : 0);
   lines.push(`<thead>`);
   lines.push(
-    `<tr><th class="dmn-table-name" colspan="${spanCount}">${esc(decisionName)}</th></tr>`
+    `<tr><th class="dmn-table-name" colspan="${spanCount}">${esc(decisionName)}</th></tr>`,
   );
 
   // --- Header row 1: clause labels (When / Then) ---
   lines.push(`<tr>`);
-  lines.push(`<th class="dmn-hit-policy">${esc(hitPolicyLabel(hitPolicy))}</th>`);
+  lines.push(
+    `<th class="dmn-hit-policy">${esc(hitPolicyLabel(hitPolicy))}</th>`,
+  );
   for (let i = 0; i < inputs.length; i++) {
     lines.push(
-      `<th class="dmn-input-col dmn-header-clause">${i === 0 ? "When" : "And"}</th>`
+      `<th class="dmn-input-col dmn-header-clause">${i === 0 ? "When" : "And"}</th>`,
     );
   }
   for (let i = 0; i < outputs.length; i++) {
     lines.push(
-      `<th class="dmn-output-col dmn-header-clause">${i === 0 ? "Then" : "And"}</th>`
+      `<th class="dmn-output-col dmn-header-clause">${i === 0 ? "Then" : "And"}</th>`,
     );
   }
   if (hasAnnotations) {
@@ -340,12 +342,16 @@ function renderDecisionTable(root, decisionId, matchedRules) {
   lines.push(`<th></th>`);
   for (const inp of inputs) {
     const label =
-      inp.attrs.label || getTextContent(findFirst(inp, "inputExpression")) || "";
+      inp.attrs.label ||
+      getTextContent(findFirst(inp, "inputExpression")) ||
+      "";
     lines.push(`<th class="dmn-input-col dmn-header-label">${esc(label)}</th>`);
   }
   for (const out of outputs) {
     const label = out.attrs.label || out.attrs.name || "";
-    lines.push(`<th class="dmn-output-col dmn-header-label">${esc(label)}</th>`);
+    lines.push(
+      `<th class="dmn-output-col dmn-header-label">${esc(label)}</th>`,
+    );
   }
   if (hasAnnotations) {
     lines.push(`<th class="dmn-header-label"></th>`);
@@ -363,7 +369,7 @@ function renderDecisionTable(root, decisionId, matchedRules) {
     const typeRef = out.attrs.typeRef || "";
     const name = out.attrs.name || "";
     lines.push(
-      `<th class="dmn-output-col dmn-header-expr">${esc(name)}${typeRef ? " (" + esc(typeRef) + ")" : ""}</th>`
+      `<th class="dmn-output-col dmn-header-expr">${esc(name)}${typeRef ? " (" + esc(typeRef) + ")" : ""}</th>`,
     );
   }
   if (hasAnnotations) {
@@ -377,7 +383,7 @@ function renderDecisionTable(root, decisionId, matchedRules) {
   for (let rIdx = 0; rIdx < rules.length; rIdx++) {
     const rule = rules[rIdx];
     const ruleId = rule.attrs.id || "";
-    const isMatched = matchedSet.has(rIdx + 1);  // matchedRules are 1-based order numbers
+    const isMatched = matchedSet.has(rIdx + 1); // matchedRules are 1-based order numbers
     const rowClass = isMatched ? ' class="dmn-matched"' : "";
 
     lines.push(`<tr${rowClass} data-rule-id="${esc(ruleId)}">`);
@@ -450,7 +456,7 @@ async function main() {
   }
   if (!decisionId) {
     process.stderr.write(
-      "dmn-render: missing 'decisionId' field in input JSON\n"
+      "dmn-render: missing 'decisionId' field in input JSON\n",
     );
     process.exit(1);
   }
@@ -461,12 +467,17 @@ async function main() {
     const rootNode =
       Array.isArray(root) && root.length === 1
         ? root[0]
-        : { tag: "root", attrs: {}, children: Array.isArray(root) ? root : [root], text: "" };
+        : {
+            tag: "root",
+            attrs: {},
+            children: Array.isArray(root) ? root : [root],
+            text: "",
+          };
     const html = renderDecisionTable(rootNode, decisionId, matchedRules);
     process.stdout.write(html);
   } catch (e) {
     process.stderr.write(
-      `dmn-render: rendering failed: ${e.message}\n${e.stack}\n`
+      `dmn-render: rendering failed: ${e.message}\n${e.stack}\n`,
     );
     process.exit(1);
   }

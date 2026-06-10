@@ -13,10 +13,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+
+      - name: Check formatting (treefmt --ci)
+        run: nix run github:cachix/devenv/latest -- shell --no-eval-cache -- treefmt --ci
+
+      - name: Type check Python (mypy)
+        run: nix run github:cachix/devenv/latest -- shell --no-eval-cache -- make mypy
+
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
+          java-version: "21"
           distribution: temurin
           cache: maven
 

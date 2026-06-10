@@ -15,12 +15,12 @@ stdenv.mkDerivation {
     "fixupPhase"
   ];
   installPhase = ''
-    mkdir -p $out/bin
-    cat << EOF > $out/bin/${call-name}
-#!/usr/bin/env bash
+        mkdir -p $out/bin
+        cat << EOF > $out/bin/${call-name}
+    #!/usr/bin/env bash
 
-exec ${jre}/bin/java \$JAVA_OPTS -jar ${jar} "\$@"
-EOF
-    chmod u+x $out/bin/${call-name}
+    exec ${jre}/bin/java \$JAVA_OPTS -jar ${jar} "\$@"
+    EOF
+        chmod u+x $out/bin/${call-name}
   '';
 }
