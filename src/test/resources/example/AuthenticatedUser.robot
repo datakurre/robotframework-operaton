@@ -42,7 +42,7 @@ Start Instance Without User Id Leaves Initiator Variable Empty
     Deploy Resources    ${CURDIR}${/}initiator-process.bpmn
     Start Instance    initiator-process
     ${author}=    Get Process Variable    author
-    Should Be Empty    ${author}
+    Should Be Equal    ${author}    ${None}
 
 Start Instance Before Activity With User Id Starts Successfully
     [Documentation]    Verifies that Start Instance Before Activity accepts user_id,
@@ -89,4 +89,4 @@ Complete Task With User Id Clears Authentication After Completion
     Complete Task    Review    user_id=alice
     Start Instance    initiator-process
     ${author}=    Get Process Variable    author
-    Should Be Empty    ${author}
+    Should Be Equal    ${author}    ${None}

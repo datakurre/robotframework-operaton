@@ -26,6 +26,19 @@
             };
           jre = prev.jdk21;
         };
+        operaton-robot-vasara = final.callPackage ./default.nix {
+          jar =
+            let
+              jdk_headless = prev.jdk21;
+            in
+            final.callPackage ./default.jar.nix {
+              maven = prev.maven.override { inherit jdk_headless; };
+              inherit jdk_headless;
+              profile = "shade-vasara";
+              classifier = "vasara";
+            };
+          jre = prev.jdk21;
+        };
       };
       pkgsFor = forAllSystems (
         system:
@@ -45,6 +58,10 @@
           type = "app";
           program = "${pkgsFor.${system}.operaton-robot}/bin/operaton-robot";
         };
+        vasara = {
+          type = "app";
+          program = "${pkgsFor.${system}.operaton-robot-vasara}/bin/operaton-robot";
+        };
       });
       packages = forAllSystems (system:
         let
@@ -53,6 +70,7 @@
         {
           default = self.packages.${system}.operaton-robot;
           operaton-robot = pkgs.operaton-robot;
+          vasara = pkgs.operaton-robot-vasara;
         }
       );
       formatter = forAllSystems (system: pkgsFor.${system}.nixfmt);

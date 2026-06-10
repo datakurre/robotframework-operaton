@@ -106,9 +106,6 @@ public class RobotWatch {
     // Create initial context and run once before starting to watch
     final String finalVfsSrcPath = vfsSrcPath;
     final boolean debugMode = Robot.isDebugMode(args);
-    if (debugMode) {
-      System.setProperty("ROBOT_LOG_LEVEL", "INFO");
-    }
     Context[] ctxHolder = {createContext(cwd, finalVfsSrcPath, debugMode)};
     runSuite(ctxHolder[0], cwd, suite.toString(), extraArgs);
 

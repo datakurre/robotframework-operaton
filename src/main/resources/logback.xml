@@ -5,7 +5,7 @@
     </encoder>
   </appender>
 
-  <root level="${ROBOT_LOG_LEVEL:-WARN}">
+  <root level="${OPERATON_LOG_LEVEL:-WARN}">
     <appender-ref ref="CONSOLE" />
   </root>
 </configuration>

@@ -416,6 +416,25 @@ class Operaton(DynamicCore):
 
     @keyword
     @except_interop_exception
+    def set_date_process_variable(self,
+                                  variable_name: str,
+                                  variable_value: Any,
+                                  pattern: str = "yyyy-MM-dd'T'HH:mm:ssX",
+                                  process_instance_id: str = ""):
+        """Parses variable_value as Java Date and sets it as a process variable.
+
+        This is needed when a real java.util.Date value is required.
+        """
+        assert self.engine, "No engine"
+        instance_id = self._resolve_instance_id(process_instance_id)
+        SimpleDateFormat = java.type("java.text.SimpleDateFormat")
+        sdf = SimpleDateFormat(pattern)
+        parsed_date = sdf.parse(str(variable_value))
+        runtime = self.engine.getRuntimeService()
+        runtime.setVariable(instance_id, variable_name, parsed_date)
+
+    @keyword
+    @except_interop_exception
     def get_tasks(self, process_instance_id: str = "") -> list:
         """Returns all active tasks for the process instance as a list of dicts.
 
