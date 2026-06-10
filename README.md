@@ -105,6 +105,13 @@ make dist-vasara    # → target/*-vasara.jar
 make dist-libspec   # → docs/Operaton.libspec
 ```
 
+Format checks are standardized via treefmt:
+
+```sh
+devenv shell --no-eval-cache -- make format        # apply formatting
+devenv shell --no-eval-cache -- make format-check  # verify formatting (CI mode)
+```
+
 ### 2. Install the CPython proxy
 
 ```sh

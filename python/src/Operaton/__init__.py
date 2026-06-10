@@ -178,7 +178,9 @@ class Operaton:
         assert self._remote is not None
         return self._remote.get_keyword_names()
 
-    def run_keyword(self, name: str, args: tuple = (), kwargs: dict | None = None) -> Any:
+    def run_keyword(
+        self, name: str, args: tuple = (), kwargs: dict | None = None
+    ) -> Any:
         """Execute a keyword on the Remote server."""
         assert self._remote is not None
         return self._remote.run_keyword(name, args, kwargs or {})

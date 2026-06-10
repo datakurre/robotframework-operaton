@@ -92,7 +92,8 @@ devenv shell --no-eval-cache -- make dist-fat                # standard fat JAR
 devenv shell --no-eval-cache -- make dist-vasara             # Vasara fat JAR
 devenv shell --no-eval-cache -- mvn test                     # run all JUnit + Robot suites
 devenv shell --no-eval-cache -- make dist-native             # native binary (slow)
-devenv shell --no-eval-cache -- make format                  # google-java-format
+devenv shell --no-eval-cache -- make format                  # treefmt (apply)
+devenv shell --no-eval-cache -- make format-check            # treefmt --ci (verify)
 devenv shell --no-eval-cache -- make dist-libspec            # generate Operaton.libspec
 devenv shell --no-eval-cache -- make remote                  # start Remote server on :8270
 devenv shell --no-eval-cache -- make dist-wheel              # build CPython proxy wheel
@@ -147,7 +148,8 @@ devenv shell --no-eval-cache -- make run SUITE="--loglevel DEBUG src/test/resour
 | `remote` | Long-running Remote server on `:8270` via fat JAR |
 | `remote-vasara` | Long-running Remote server via Vasara JAR |
 | `remote-dev` | Long-running Remote server via Maven classpath |
-| `format` | `google-java-format` all Java source files |
+| `format` | Format sources with `treefmt` |
+| `format-check` | Verify formatting with `treefmt --ci` |
 | `install-proxy` | `pip install -e python/` (editable install) |
 
 ## Conventions
@@ -177,7 +179,7 @@ devenv shell --no-eval-cache -- make run SUITE="--loglevel DEBUG src/test/resour
 
 ### Java style
 
-- Java 17 features only. Format with `make format` (uses `google-java-format`).
+- Java 17 features only. Format with `make format` (uses `treefmt`).
 - No new transitive dependencies without checking `dependencyManagement` first.
 
 ## Versions

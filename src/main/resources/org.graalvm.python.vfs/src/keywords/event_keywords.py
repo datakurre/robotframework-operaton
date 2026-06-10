@@ -11,7 +11,9 @@ class EventKeywords:
 
     @keyword
     @except_interop_exception
-    def correlate_message(self, message_name: str, process_instance_id: str = "", **variables: Any):
+    def correlate_message(
+        self, message_name: str, process_instance_id: str = "", **variables: Any
+    ):
         """Correlates a message to a process instance.
 
         Defaults to the current instance in scope; pass ``process_instance_id`` to target
@@ -32,7 +34,9 @@ class EventKeywords:
 
     @keyword
     @except_interop_exception
-    def send_message(self, message_name: str, process_instance_id: str = "", **variables: Any):
+    def send_message(
+        self, message_name: str, process_instance_id: str = "", **variables: Any
+    ):
         """Alias for Correlate Message."""
         self.correlate_message(message_name, process_instance_id, **variables)
 
@@ -52,7 +56,9 @@ class EventKeywords:
 
     @keyword
     @except_interop_exception
-    def should_have_incident(self, incident_type: str = "", process_instance_id: str = "") -> list:
+    def should_have_incident(
+        self, incident_type: str = "", process_instance_id: str = ""
+    ) -> list:
         """Asserts that the process instance has at least one incident. Defaults to the current instance.
 
         Returns a list of incident dicts with: id, incidentType, activityId, message.
@@ -64,16 +70,24 @@ class EventKeywords:
         if incident_type:
             query = query.incidentType(incident_type)
         incidents = query.list()
-        assert int(incidents.size()) > 0, (
-            f"No incidents found for process instance '{instance_id}'"
-        )
+        assert (
+            int(incidents.size()) > 0
+        ), f"No incidents found for process instance '{instance_id}'"
         result = []
         for i in range(int(incidents.size())):
             inc = incidents.get(i)
-            result.append({
-                "id": str(inc.getId()),
-                "incidentType": str(inc.getIncidentType()),
-                "activityId": str(inc.getActivityId()) if inc.getActivityId() else None,
-                "message": str(inc.getIncidentMessage()) if inc.getIncidentMessage() else None,
-            })
+            result.append(
+                {
+                    "id": str(inc.getId()),
+                    "incidentType": str(inc.getIncidentType()),
+                    "activityId": (
+                        str(inc.getActivityId()) if inc.getActivityId() else None
+                    ),
+                    "message": (
+                        str(inc.getIncidentMessage())
+                        if inc.getIncidentMessage()
+                        else None
+                    ),
+                }
+            )
         return result

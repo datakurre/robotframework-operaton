@@ -16,14 +16,17 @@ class ProcessAssertions:
         assert self.ctx.engine, "No engine"
         instance_id = self.ctx._resolve_instance_id(process_instance_id)
         history = self.ctx.engine.getHistoryService()
-        instance = history.createHistoricProcessInstanceQuery() \
-            .processInstanceId(instance_id).singleResult()
-        assert instance is not None, (
-            f"Process instance '{instance_id}' not found in history"
+        instance = (
+            history.createHistoricProcessInstanceQuery()
+            .processInstanceId(instance_id)
+            .singleResult()
         )
-        assert instance.getEndTime() is not None, (
-            f"Process instance '{instance_id}' has not ended"
-        )
+        assert (
+            instance is not None
+        ), f"Process instance '{instance_id}' not found in history"
+        assert (
+            instance.getEndTime() is not None
+        ), f"Process instance '{instance_id}' has not ended"
 
     @keyword
     @except_interop_exception
@@ -32,14 +35,17 @@ class ProcessAssertions:
         assert self.ctx.engine, "No engine"
         instance_id = self.ctx._resolve_instance_id(process_instance_id)
         runtime = self.ctx.engine.getRuntimeService()
-        instance = runtime.createProcessInstanceQuery() \
-            .processInstanceId(instance_id).singleResult()
-        assert instance is not None, (
-            f"Process instance '{instance_id}' not found or has ended"
+        instance = (
+            runtime.createProcessInstanceQuery()
+            .processInstanceId(instance_id)
+            .singleResult()
         )
-        assert not instance.isSuspended(), (
-            f"Process instance '{instance_id}' is suspended, not active"
-        )
+        assert (
+            instance is not None
+        ), f"Process instance '{instance_id}' not found or has ended"
+        assert (
+            not instance.isSuspended()
+        ), f"Process instance '{instance_id}' is suspended, not active"
 
     @keyword
     @except_interop_exception
@@ -48,14 +54,17 @@ class ProcessAssertions:
         assert self.ctx.engine, "No engine"
         instance_id = self.ctx._resolve_instance_id(process_instance_id)
         runtime = self.ctx.engine.getRuntimeService()
-        instance = runtime.createProcessInstanceQuery() \
-            .processInstanceId(instance_id).singleResult()
-        assert instance is not None, (
-            f"Process instance '{instance_id}' not found or has ended"
+        instance = (
+            runtime.createProcessInstanceQuery()
+            .processInstanceId(instance_id)
+            .singleResult()
         )
-        assert instance.isSuspended(), (
-            f"Process instance '{instance_id}' is not suspended"
-        )
+        assert (
+            instance is not None
+        ), f"Process instance '{instance_id}' not found or has ended"
+        assert (
+            instance.isSuspended()
+        ), f"Process instance '{instance_id}' is not suspended"
 
     @keyword
     @except_interop_exception
@@ -77,7 +86,13 @@ class ProcessAssertions:
 
     @keyword
     @except_interop_exception
-    def should_have_active(self, activity_id: str = "", name: str = "", times: int = 1, process_instance_id: str = ""):
+    def should_have_active(
+        self,
+        activity_id: str = "",
+        name: str = "",
+        times: int = 1,
+        process_instance_id: str = "",
+    ):
         """Asserts that the process instance has exactly *times* currently active (unfinished) activity instances.
 
         Filter by *activity_id* (BPMN element ID) or *name* (human-readable element name).
@@ -87,9 +102,11 @@ class ProcessAssertions:
         assert self.ctx.engine, "No engine"
         instance_id = self.ctx._resolve_instance_id(process_instance_id)
         history = self.ctx.engine.getHistoryService()
-        query = (history.createHistoricActivityInstanceQuery()
-                 .processInstanceId(instance_id)
-                 .unfinished())
+        query = (
+            history.createHistoricActivityInstanceQuery()
+            .processInstanceId(instance_id)
+            .unfinished()
+        )
         if activity_id:
             query = query.activityId(activity_id)
         if name:
@@ -103,7 +120,13 @@ class ProcessAssertions:
 
     @keyword
     @except_interop_exception
-    def should_have_completed(self, activity_id: str = "", name: str = "", times: int = 1, process_instance_id: str = ""):
+    def should_have_completed(
+        self,
+        activity_id: str = "",
+        name: str = "",
+        times: int = 1,
+        process_instance_id: str = "",
+    ):
         """Asserts that the process instance has exactly *times* completed activity instances.
 
         Filter by *activity_id* (BPMN element ID) or *name* (human-readable element name).
@@ -113,9 +136,11 @@ class ProcessAssertions:
         assert self.ctx.engine, "No engine"
         instance_id = self.ctx._resolve_instance_id(process_instance_id)
         history = self.ctx.engine.getHistoryService()
-        query = (history.createHistoricActivityInstanceQuery()
-                 .processInstanceId(instance_id)
-                 .finished())
+        query = (
+            history.createHistoricActivityInstanceQuery()
+            .processInstanceId(instance_id)
+            .finished()
+        )
         if activity_id:
             query = query.activityId(activity_id)
         if name:
