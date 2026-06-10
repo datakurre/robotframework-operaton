@@ -19,6 +19,9 @@ jobs:
       - name: Check formatting (treefmt --ci)
         run: nix run github:cachix/devenv/latest -- shell --no-eval-cache -- treefmt --ci
 
+      - name: Type check Python (mypy)
+        run: nix run github:cachix/devenv/latest -- shell --no-eval-cache -- make mypy
+
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:

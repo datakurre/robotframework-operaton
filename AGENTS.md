@@ -94,6 +94,7 @@ devenv shell --no-eval-cache -- mvn test                     # run all JUnit + R
 devenv shell --no-eval-cache -- make dist-native             # native binary (slow)
 devenv shell --no-eval-cache -- make format                  # treefmt (apply)
 devenv shell --no-eval-cache -- make format-check            # treefmt --ci (verify)
+devenv shell --no-eval-cache -- make mypy                    # mypy
 devenv shell --no-eval-cache -- make dist-libspec            # generate Operaton.libspec
 devenv shell --no-eval-cache -- make remote                  # start Remote server on :8270
 devenv shell --no-eval-cache -- make dist-wheel              # build CPython proxy wheel
@@ -137,6 +138,7 @@ devenv shell --no-eval-cache -- make run SUITE="--loglevel DEBUG src/test/resour
 | `clean` | `mvn clean` |
 | `test` | All JUnit + Robot suites (Nix-aware: uses `-Pnix` in devenv) |
 | `check` | `mvn verify` (test + integration checks) |
+| `mypy` | Run `mypy` on Python sources |
 | `run` | Run a suite via fat JAR (`SUITE=path/to/Suite.robot`) |
 | `run-vasara` | Run a suite via Vasara JAR |
 | `run-native` | Run a suite via native binary |
