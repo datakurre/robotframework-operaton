@@ -1,17 +1,20 @@
 from robot.api.deco import keyword
-from typing import Any
+from typing import TYPE_CHECKING
 
 from keywords.base import java, except_interop_exception
 
 
-class TypedVariables:
+if TYPE_CHECKING:
+    from Operaton import Operaton
 
-    def __init__(self, ctx: Any):
+
+class TypedVariables:
+    def __init__(self, ctx: "Operaton") -> None:
         self.ctx = ctx
 
     @keyword
     @except_interop_exception
-    def create_integer_variable(self, value: Any) -> Any:
+    def create_integer_variable(self, value: object) -> object:
         """Creates a Java Integer value for typed DMN/process variable input.
 
         Example usage in Robot::
@@ -24,7 +27,7 @@ class TypedVariables:
 
     @keyword
     @except_interop_exception
-    def create_double_variable(self, value: Any) -> Any:
+    def create_double_variable(self, value: object) -> object:
         """Creates a Java Double value for typed DMN/process variable input.
 
         Example usage in Robot::
@@ -36,7 +39,7 @@ class TypedVariables:
 
     @keyword
     @except_interop_exception
-    def create_boolean_variable(self, value: Any) -> Any:
+    def create_boolean_variable(self, value: object) -> object:
         """Creates a Java Boolean value for typed DMN/process variable input.
 
         Example usage in Robot::
@@ -50,7 +53,9 @@ class TypedVariables:
 
     @keyword
     @except_interop_exception
-    def create_date_variable(self, value: Any, pattern: str = "yyyy-MM-dd") -> Any:
+    def create_date_variable(
+        self, value: object, pattern: str = "yyyy-MM-dd"
+    ) -> object:
         """Creates a Java Date value for typed DMN/process variable input.
 
         Example usage in Robot::

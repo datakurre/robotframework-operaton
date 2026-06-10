@@ -1,63 +1,121 @@
 from functools import wraps
-from typing import Any
+from collections.abc import Iterator
+from typing import Callable, ParamSpec, Protocol, TypeVar
 
 import inspect
 import sys
 
+
+class InteropObject(Protocol):
+    def __getattr__(self, name: str) -> "InteropObject": ...
+    def __call__(self, *args: object, **kwargs: object) -> "InteropObject": ...
+    def __iter__(self) -> Iterator["InteropObject"]: ...
+    def __int__(self) -> int: ...
+    def __str__(self) -> str: ...
+    def __bool__(self) -> bool: ...
+
+
+class JavaModule(Protocol):
+    @staticmethod
+    def type(klass: str) -> InteropObject: ...
+
+
 try:
-    import java  # pyright: ignore
+    import java as _java  # pyright: ignore
 except ImportError:
     # Fix typechecks outside graalpy
-    class java:
+    class _JavaFallback:
         @staticmethod
-        def type(klass: str) -> Any:
-            pass
+        def type(klass: str) -> InteropObject:
+            raise RuntimeError(
+                "GraalPy java interop is unavailable in this environment"
+            )
+
+    java: JavaModule = _JavaFallback()
+else:
+    java = _java
+
+
+__all__ = [
+    "InteropObject",
+    "Variables",
+    "except_interop_exception",
+    "with_authenticated_user",
+    "java",
+]
+
+
+class _RobotLogger(Protocol):
+    def debug(self, message: str) -> None: ...
 
 
 try:
-    from robot.api import logger as _rf_logger  # pyright: ignore
+    from robot.api import logger as _rf_logger_raw  # pyright: ignore
+
+    _rf_logger: _RobotLogger | None = _rf_logger_raw
 except Exception:
     _rf_logger = None
 
 
 Variables = java.type("org.operaton.bpm.engine.variable.Variables")
 
+P = ParamSpec("P")
+R = TypeVar("R")
 
-def except_interop_exception(func):
+
+def _interop_message(exc: BaseException) -> str:
+    message = str(exc) if str(exc) else "Unknown error"
+    get_message = getattr(exc, "getMessage", None)
+    if callable(get_message):
+        java_msg_obj = get_message()
+        java_msg = str(java_msg_obj) if java_msg_obj is not None else ""
+        if java_msg:
+            message = java_msg
+    return message
+
+
+def _interop_stack(exc: BaseException) -> list[str]:
+    get_stack = getattr(exc, "getStackTrace", None)
+    if not callable(get_stack):
+        return []
+    trace_obj = get_stack()
+    if trace_obj is None:
+        return []
+
+    frames: list[str] = []
+    try:
+        for elem in trace_obj:
+            frames.append(str(elem))
+            if len(frames) >= 5:
+                break
+    except TypeError:
+        return []
+    return frames
+
+
+def except_interop_exception(func: Callable[P, R]) -> Callable[P, R]:
     @wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         try:
             return func(*args, **kwargs)
-        except:  # noqa
-            exc_type, exc_value, exc_traceback = sys.exc_info()
-            message = str(exc_value) if exc_value else "Unknown error"
+        except Exception as exc:
+            message = _interop_message(exc)
             try:
-                if hasattr(exc_value, "getMessage"):
-                    java_msg = exc_value.getMessage()
-                    if java_msg:
-                        message = str(java_msg)
-                if hasattr(exc_value, "getStackTrace"):
-                    trace = exc_value.getStackTrace()
-                    if trace:
-                        frames = []
-                        for elem in trace:
-                            frames.append(str(elem))
-                            if len(frames) >= 5:
-                                break
-                        if frames:
-                            stack_text = "Java stack trace:\n  " + "\n  ".join(frames)
-                            if _rf_logger is not None:
-                                _rf_logger.debug(stack_text)
-                            else:
-                                print(stack_text)
+                frames = _interop_stack(exc)
+                if frames:
+                    stack_text = "Java stack trace:\n  " + "\n  ".join(frames)
+                    if _rf_logger is not None:
+                        _rf_logger.debug(stack_text)
+                    else:
+                        print(stack_text)
             except Exception:
                 pass
-            assert False, message
+            raise AssertionError(message) from exc
 
     return wrapper
 
 
-def with_authenticated_user(func):
+def with_authenticated_user(func: Callable[P, R]) -> Callable[P, R]:
     """Decorator that sets the authenticated user around a keyword call.
 
     Looks for a ``user_id`` parameter in the decorated function's signature.
@@ -68,13 +126,19 @@ def with_authenticated_user(func):
     param_names = list(sig.parameters.keys())
 
     @wraps(func)
-    def wrapper(*args, **kwargs):
-        user_id = kwargs.get("user_id", "")
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+        user_id = ""
+        if "user_id" in kwargs:
+            maybe_user = kwargs["user_id"]
+            if isinstance(maybe_user, str):
+                user_id = maybe_user
         # try positional arguments if keyword not used
         if not user_id and "user_id" in param_names:
             idx = param_names.index("user_id")
             if idx < len(args):
-                user_id = args[idx]
+                maybe_user = args[idx]
+                if isinstance(maybe_user, str):
+                    user_id = maybe_user
 
         self_obj = args[0] if args else None
         engine = getattr(self_obj, "engine", None) if self_obj else None
