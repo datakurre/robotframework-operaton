@@ -24,7 +24,7 @@ help:  ## Show this help
 # This target pre-creates a stub module in any cached GraalPy python-home
 # directories so that ensurepip can succeed.
 # On a fresh machine the cache can appear during the first Maven run;
-# compile/test targets therefore retry once after applying this patch again.
+# Maven targets therefore retry once after applying this patch again.
 _SYSCONFIGDATA_STUB := build_time_vars = {"SOABI": "cpython-312-x86_64-linux-gnu", "EXT_SUFFIX": ".cpython-312-x86_64-linux-gnu.so"}
 .PHONY: _fix-graalpy-sysconfig
 _fix-graalpy-sysconfig:
@@ -34,17 +34,25 @@ _fix-graalpy-sysconfig:
 	  fi; \
 	done; true
 
+define _run_maven_with_graalpy_retry
+	@$(1) || { \
+	  echo "Retrying $(2) after applying GraalPy sysconfig stub..."; \
+	  $(MAKE) _fix-graalpy-sysconfig; \
+	  $(1); \
+	}
+endef
+
 .PHONY: build
 build: _fix-graalpy-sysconfig  ## Thin JAR (dev/test classpath; not distributable)
-	mvn package -DskipTests
+	$(call _run_maven_with_graalpy_retry,mvn package -DskipTests,build)
 
 .PHONY: dist-fat
 dist-fat: _fix-graalpy-sysconfig  ## Standard fat JAR [primary deliverable]
-	mvn -Pshade package -DskipTests
+	$(call _run_maven_with_graalpy_retry,mvn -Pshade package -DskipTests,dist-fat)
 
 .PHONY: dist-vasara
 dist-vasara: _fix-graalpy-sysconfig  ## Vasara fat JAR (includes fi.jyu.vasara.* form classes)
-	mvn -Pshade-vasara package -DskipTests
+	$(call _run_maven_with_graalpy_retry,mvn -Pshade-vasara package -DskipTests,dist-vasara)
 
 .PHONY: dist-native
 dist-native:  ## Native binary via GraalVM native-image (slow)
@@ -59,13 +67,13 @@ DOCS_DIR ?= docs
 .PHONY: dist-docs
 dist-docs:  ## Keyword HTML reference → $(DOCS_DIR)/Operaton.html  [DOCS_DIR=docs]
 	mkdir -p $(DOCS_DIR)
-	mvn -q -DskipTests package
+	$(call _run_maven_with_graalpy_retry,mvn -q -DskipTests package,dist-docs)
 	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Libdoc $(DOCS_DIR)/Operaton.html"
 
 .PHONY: dist-libspec
 dist-libspec:  ## Keyword spec for RobotCode LSP → $(DOCS_DIR)/Operaton.libspec  [DOCS_DIR=docs]
 	mkdir -p $(DOCS_DIR)
-	mvn -q -DskipTests package
+	$(call _run_maven_with_graalpy_retry,mvn -q -DskipTests package,dist-libspec)
 	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Libdoc $(DOCS_DIR)/Operaton.libspec"
 
 .PHONY: clean
@@ -118,19 +126,11 @@ _nix-venv-bootstrap:
 
 .PHONY: compile
 compile: _fix-graalpy-sysconfig  ## Compile Java + test sources (no tests executed)
-	@mvn -q -DskipTests test-compile || { \
-	  echo "Retrying compile after applying GraalPy sysconfig stub..."; \
-	  $(MAKE) _fix-graalpy-sysconfig; \
-	  mvn -q -DskipTests test-compile; \
-	}
+	$(call _run_maven_with_graalpy_retry,mvn -q -DskipTests test-compile,compile)
 
 .PHONY: test
 test: _fix-graalpy-sysconfig  ## Run all JUnit + Robot suites
-	@mvn test || { \
-	  echo "Retrying tests after applying GraalPy sysconfig stub..."; \
-	  $(MAKE) _fix-graalpy-sysconfig; \
-	  mvn test; \
-	}
+	$(call _run_maven_with_graalpy_retry,mvn test,test)
 
 .PHONY: check
 check:  ## mvn verify
