@@ -1,21 +1,21 @@
 from robot.api.deco import keyword
-from typing import Any
+from typing import TYPE_CHECKING
 
-from keywords.base import Variables, except_interop_exception, with_authenticated_user
+from keywords.base import (
+    ScalarValue,
+    Variables,
+    VariableValue,
+    except_interop_exception,
+    with_authenticated_user,
+)
 
-try:
-    import java  # pyright: ignore
-except ImportError:
 
-    class java:
-        @staticmethod
-        def type(klass: str) -> Any:
-            pass
+if TYPE_CHECKING:
+    from Operaton import Operaton
 
 
 class FormKeywords:
-
-    def __init__(self, ctx: Any):
+    def __init__(self, ctx: "Operaton") -> None:
         self.ctx = ctx
 
     @keyword
@@ -26,8 +26,8 @@ class FormKeywords:
         name: str = "",
         process_instance_id: str = "",
         user_id: str = "",
-        **form_variables: Any,
-    ):
+        **form_variables: VariableValue,
+    ) -> None:
         """Submits a user task form with the given field values.
 
         Defaults to the current instance in scope; pass ``process_instance_id`` to override.
@@ -61,7 +61,7 @@ class FormKeywords:
         self,
         name: str = "",
         process_instance_id: str = "",
-    ) -> dict:
+    ) -> dict[str, ScalarValue]:
         """Returns all form field variables for the active user task as a Python dict.
 
         Defaults to the current instance in scope; pass ``process_instance_id`` to override.
@@ -86,7 +86,7 @@ class FormKeywords:
         task = query.singleResult()
         assert task, f"No task found for instance {instance_id}"
         java_map = form_service.getTaskFormVariables(task.getId())
-        result = {}
+        result: dict[str, ScalarValue] = {}
         for entry in java_map.entrySet():
             key = str(entry.getKey())
             value = entry.getValue()  # VariableMap values are already raw Java objects

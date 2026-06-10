@@ -1,28 +1,34 @@
 from robot.api.deco import keyword
-from typing import Any
+from typing import TYPE_CHECKING
 
 import json
 
-from keywords.base import Variables, except_interop_exception
+from keywords.base import (
+    DmnValue,
+    Variables,
+    VariableValue,
+    java,
+    except_interop_exception,
+)
 
-try:
-    import java  # pyright: ignore
-except ImportError:
 
-    class java:
-        @staticmethod
-        def type(klass: str) -> Any:
-            pass
+if TYPE_CHECKING:
+    from Operaton import Operaton
+
+
+DecisionRow = dict[str, DmnValue]
+DecisionResult = list[DecisionRow]
 
 
 class DmnKeywords:
-
-    def __init__(self, ctx: Any):
+    def __init__(self, ctx: "Operaton") -> None:
         self.ctx = ctx
 
     @keyword
     @except_interop_exception
-    def evaluate_decision(self, decision_key: str, **variables: Any) -> Any:
+    def evaluate_decision(
+        self, decision_key: str, **variables: VariableValue
+    ) -> DecisionResult:
         """Evaluates a deployed DMN decision by key with the given input variables.
 
         Returns the full decision result as a list of dictionaries.
@@ -42,19 +48,21 @@ class DmnKeywords:
                 var_map.putValue(name, value)
             builder = builder.variables(var_map)
         dmn_result = builder.evaluate()
-        result = []
-        for i in range(dmn_result.size()):
+        result: DecisionResult = []
+        for i in range(int(dmn_result.size())):
             entry = dmn_result.get(i)
-            row = {}
+            row: DecisionRow = {}
             entry_map = entry.getEntryMap()
             for key in entry_map.keySet():
-                row[str(key)] = entry_map.get(key)
+                row[str(key)] = entry_map.get(key)  # type: ignore[assignment]  # GraalPy auto-boxes FEEL values
             result.append(row)
         return result
 
     @keyword
     @except_interop_exception
-    def evaluate_decision_table(self, decision_key: str, **variables: Any) -> Any:
+    def evaluate_decision_table(
+        self, decision_key: str, **variables: VariableValue
+    ) -> DecisionResult:
         """Evaluates a deployed DMN decision table by key with the given input variables.
 
         Returns the decision table result as a list of dictionaries.
@@ -75,21 +83,21 @@ class DmnKeywords:
                 var_map.putValue(name, value)
             builder = builder.variables(var_map)
         dmn_result = builder.evaluate()
-        result = []
-        for i in range(dmn_result.size()):
+        result: DecisionResult = []
+        for i in range(int(dmn_result.size())):
             entry = dmn_result.get(i)
-            row = {}
+            row: DecisionRow = {}
             entry_map = entry.getEntryMap()
             for key in entry_map.keySet():
-                row[str(key)] = entry_map.get(key)
+                row[str(key)] = entry_map.get(key)  # type: ignore[assignment]  # GraalPy auto-boxes FEEL values
             result.append(row)
         return result
 
     @keyword
     @except_interop_exception
     def decision_result_should_contain(
-        self, result: Any, output_name: str, expected_value: Any
-    ):
+        self, result: DecisionResult, output_name: str, expected_value: DmnValue
+    ) -> None:
         """Asserts that at least one row in the decision result contains
         the expected value for the given output name.
 
@@ -111,7 +119,7 @@ class DmnKeywords:
 
     @keyword
     @except_interop_exception
-    def decision_single_result(self, result: Any) -> Any:
+    def decision_single_result(self, result: DecisionResult) -> DecisionRow:
         """Returns the single result row from a decision result.
 
         Asserts that exactly one rule matched.
@@ -128,7 +136,7 @@ class DmnKeywords:
 
     @keyword
     @except_interop_exception
-    def decision_single_entry(self, result: Any) -> Any:
+    def decision_single_entry(self, result: DecisionResult) -> DmnValue:
         """Returns the single output value from a decision result with exactly
         one matched rule and one output column.
 
@@ -149,7 +157,9 @@ class DmnKeywords:
 
     @keyword
     @except_interop_exception
-    def collect_entries(self, result: Any, output_name: str) -> Any:
+    def collect_entries(
+        self, result: DecisionResult, output_name: str
+    ) -> list[DmnValue]:
         """Returns all values of a specific output column from a decision result.
 
         Extracts the value of the given output column from each matched rule.
@@ -184,7 +194,7 @@ class DmnKeywords:
 
     @keyword
     @except_interop_exception
-    def log_dmn_result(self, decision_key: str):
+    def log_dmn_result(self, decision_key: str) -> None:
         """Renders the most recently evaluated DMN decision table as HTML and logs it.
 
         Shows the full decision table with matched/fired rules highlighted in green.
@@ -274,14 +284,18 @@ class DmnKeywords:
                 f'*HTML* <div class="dmn-result" '
                 f'style="max-width:100%;overflow:auto">{html}</div>'
             )
-        except:  # noqa - bare except needed to catch GraalPy host exceptions
+        except Exception:
             import sys as _sys
 
             _exc = _sys.exc_info()[1]
             _msg = str(_exc) if _exc else "unknown error"
             try:
-                if hasattr(_exc, "getMessage") and _exc.getMessage():
-                    _msg = str(_exc.getMessage())
+                if _exc is not None:
+                    get_message = getattr(_exc, "getMessage", None)
+                    if callable(get_message):
+                        value = get_message()
+                        if value:
+                            _msg = str(value)
             except Exception:
                 pass
             print(f"*WARN* DMN rendering failed: {_msg}")

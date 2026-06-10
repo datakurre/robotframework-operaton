@@ -1,26 +1,22 @@
 from robot.api.deco import keyword
-from typing import Any
+from typing import TYPE_CHECKING
 
-from keywords.base import except_interop_exception
+from keywords.base import NativeValue, java, except_interop_exception
 
-try:
-    import java  # pyright: ignore
-except ImportError:
 
-    class java:
-        @staticmethod
-        def type(klass: str) -> Any:
-            pass
+if TYPE_CHECKING:
+    from Operaton import Operaton
 
 
 class HistoryKeywords:
-
-    def __init__(self, ctx: Any):
+    def __init__(self, ctx: "Operaton") -> None:
         self.ctx = ctx
 
     @keyword
     @except_interop_exception
-    def get_completed_instances(self, process_definition_key: str = "") -> list:
+    def get_completed_instances(
+        self, process_definition_key: str = ""
+    ) -> list[dict[str, str | None]]:
         """Returns a list of completed historic process instances as dicts.
 
         Each dict has: id, processDefinitionKey, startTime, endTime.
@@ -48,7 +44,9 @@ class HistoryKeywords:
 
     @keyword
     @except_interop_exception
-    def get_historic_variables(self, process_instance_id: str = "") -> dict:
+    def get_historic_variables(
+        self, process_instance_id: str = ""
+    ) -> dict[str, NativeValue]:
         """Returns historic variable instances as a dict with Python-native values.
 
         Defaults to the current instance in scope.
@@ -61,10 +59,10 @@ class HistoryKeywords:
             .processInstanceId(instance_id)
             .list()
         )
-        result = {}
+        result: dict[str, NativeValue] = {}
         for i in range(int(variables.size())):
             var = variables.get(i)
-            val = var.getValue()
+            val: NativeValue = var.getValue()  # type: ignore[assignment]  # interop → Python native
             # Ensure value is Python-native for Remote protocol compatibility
             if val is not None and not isinstance(
                 val, (str, int, float, bool, list, dict)
@@ -75,7 +73,9 @@ class HistoryKeywords:
 
     @keyword
     @except_interop_exception
-    def get_activity_history(self, process_instance_id: str = "") -> list:
+    def get_activity_history(
+        self, process_instance_id: str = ""
+    ) -> list[dict[str, str | bool]]:
         """Returns a list of historic activity instances as dicts.
 
         Each dict has: activityId, activityName, activityType, canceled, completed.
@@ -91,7 +91,7 @@ class HistoryKeywords:
             .asc()
             .list()
         )
-        result = []
+        result: list[dict[str, str | bool]] = []
         for i in range(int(activities.size())):
             act = activities.get(i)
             result.append(

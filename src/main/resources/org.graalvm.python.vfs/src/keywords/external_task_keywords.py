@@ -1,12 +1,15 @@
 from robot.api.deco import keyword
-from typing import Any
+from typing import TYPE_CHECKING
 
-from keywords.base import Variables, except_interop_exception
+from keywords.base import Variables, VariableValue, except_interop_exception
+
+
+if TYPE_CHECKING:
+    from Operaton import Operaton
 
 
 class ExternalTaskKeywords:
-
-    def __init__(self, ctx: Any):
+    def __init__(self, ctx: "Operaton") -> None:
         self.ctx = ctx
 
     @keyword
@@ -15,9 +18,9 @@ class ExternalTaskKeywords:
         self,
         topic: str,
         worker_id: str = "robot-worker",
-        max_tasks: Any = 1,
-        lock_duration: Any = 10000,
-    ):
+        max_tasks: str | int = 1,
+        lock_duration: str | int = 10000,
+    ) -> list[str]:
         """Fetches and locks external tasks for the given topic.
 
         Returns a list of external task IDs.
@@ -41,8 +44,11 @@ class ExternalTaskKeywords:
     @keyword
     @except_interop_exception
     def complete_external_task(
-        self, external_task_id: str, worker_id: str = "robot-worker", **variables: Any
-    ):
+        self,
+        external_task_id: str,
+        worker_id: str = "robot-worker",
+        **variables: VariableValue,
+    ) -> None:
         """Completes an external task by its ID.
 
         Example usage in Robot::
@@ -69,7 +75,7 @@ class ExternalTaskKeywords:
         error_code: str,
         error_message: str = "",
         worker_id: str = "robot-worker",
-    ):
+    ) -> None:
         """Throws a BPMN error for an external task, triggering error boundary events.
 
         Example usage in Robot::

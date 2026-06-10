@@ -1,19 +1,22 @@
-from asyncio import tasks
-
 from robot.api.deco import keyword
-from typing import Any
+from typing import TYPE_CHECKING
 
-from keywords.base import Variables, java, except_interop_exception
+from keywords.base import Variables, VariableValue, java, except_interop_exception
+
+
+if TYPE_CHECKING:
+    from Operaton import Operaton
 
 
 class TimerKeywords:
-
-    def __init__(self, ctx: Any):
+    def __init__(self, ctx: "Operaton") -> None:
         self.ctx = ctx
 
     @keyword
     @except_interop_exception
-    def set_clock(self, date_string: str, pattern: str = "yyyy-MM-dd'T'HH:mm:ss"):
+    def set_clock(
+        self, date_string: str, pattern: str = "yyyy-MM-dd'T'HH:mm:ss"
+    ) -> None:
         """Sets the process engine clock to a specific date/time.
 
         Example usage in Robot::
@@ -28,7 +31,7 @@ class TimerKeywords:
 
     @keyword
     @except_interop_exception
-    def advance_clock(self, milliseconds: Any):
+    def advance_clock(self, milliseconds: str | int) -> None:
         """Advances the process engine clock by the given number of milliseconds.
 
         Example usage in Robot::
@@ -45,7 +48,7 @@ class TimerKeywords:
 
     @keyword
     @except_interop_exception
-    def reset_clock(self):
+    def reset_clock(self) -> None:
         """Resets the process engine clock to the current system time.
 
         Example usage in Robot::
@@ -57,7 +60,7 @@ class TimerKeywords:
 
     @keyword
     @except_interop_exception
-    def execute_timer_jobs(self, process_instance_id: str = ""):
+    def execute_timer_jobs(self, process_instance_id: str = "") -> None:
         """Executes all timer jobs for the process instance.
 
         Defaults to the current instance in scope if one exists;
@@ -115,7 +118,7 @@ class TimerKeywords:
         topic: str,
         process_instance_id: str = "",
         worker_id: str = "robot-worker",
-        **variables: Any,
+        **variables: VariableValue,
     ) -> int:
         """Completes one external task for the given topic and executes pending jobs before and after."""
         assert self.ctx.engine, "No engine"

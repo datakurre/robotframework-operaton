@@ -37,8 +37,8 @@ import subprocess
 import sys
 import tempfile
 import time
+from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Any
 
 from robot.api import logger
 from robot.libraries.Remote import Remote
@@ -71,9 +71,13 @@ class Operaton:
                     ``OPERATON_REMOTE`` environment variable.  When set, the
                     proxy connects immediately without spawning a JVM process.
         """
-        self._proc: subprocess.Popen | None = None
+        self._proc: subprocess.Popen[bytes] | None = None
         self._tmpdir: str | None = None
         self._remote: Remote | None = None
+        self._jar = ""
+        self._timeout = timeout
+        self._port = port
+        self._port_file = ""
 
         remote_uri = remote or os.environ.get("OPERATON_REMOTE", "")
         if remote_uri:
@@ -101,7 +105,7 @@ class Operaton:
         self._start_server()
         atexit.register(self._shutdown)
 
-    def _start_server(self):
+    def _start_server(self) -> None:
         """Spawn the JVM Remote server process and wait for it to be ready."""
         java_cmd = shutil.which("java")
         if not java_cmd:
@@ -148,7 +152,7 @@ class Operaton:
 
         # Wait for the port file to appear
         deadline = time.time() + self._timeout
-        actual_port = None
+        actual_port: str | None = None
         while time.time() < deadline:
             if self._proc.poll() is not None:
                 stderr = self._proc.stderr.read().decode() if self._proc.stderr else ""
@@ -173,14 +177,17 @@ class Operaton:
         self._remote = Remote(uri=uri)
         logger.info(f"Connected to Operaton Remote Server at {uri}")
 
-    def get_keyword_names(self) -> list:
+    def get_keyword_names(self) -> list[str]:
         """Return keyword names from the Remote server."""
         assert self._remote is not None
         return self._remote.get_keyword_names()
 
     def run_keyword(
-        self, name: str, args: tuple = (), kwargs: dict | None = None
-    ) -> Any:
+        self,
+        name: str,
+        args: Sequence[object] = (),
+        kwargs: Mapping[str, object] | None = None,
+    ) -> object:
         """Execute a keyword on the Remote server."""
         assert self._remote is not None
         return self._remote.run_keyword(name, args, kwargs or {})
@@ -193,7 +200,7 @@ class Operaton:
         except Exception:
             return ""
 
-    def get_keyword_arguments(self, name: str) -> list:
+    def get_keyword_arguments(self, name: str) -> list[str]:
         """Return keyword arguments from the Remote server."""
         assert self._remote is not None
         try:
@@ -201,7 +208,7 @@ class Operaton:
         except Exception:
             return ["*args"]
 
-    def _shutdown(self):
+    def _shutdown(self) -> None:
         """Stop the JVM Remote server process (no-op in connect mode)."""
         if self._proc is None:
             # Connect mode: we do not own the server; leave it running.

@@ -1,19 +1,25 @@
 from robot.api.deco import keyword
-from typing import Any
+from typing import TYPE_CHECKING
 
-from keywords.base import Variables, except_interop_exception
+from keywords.base import Variables, VariableValue, except_interop_exception
+
+
+if TYPE_CHECKING:
+    from Operaton import Operaton
 
 
 class EventKeywords:
-
-    def __init__(self, ctx: Any):
+    def __init__(self, ctx: "Operaton") -> None:
         self.ctx = ctx
 
     @keyword
     @except_interop_exception
     def correlate_message(
-        self, message_name: str, process_instance_id: str = "", **variables: Any
-    ):
+        self,
+        message_name: str,
+        process_instance_id: str = "",
+        **variables: VariableValue,
+    ) -> None:
         """Correlates a message to a process instance.
 
         Defaults to the current instance in scope; pass ``process_instance_id`` to target
@@ -35,14 +41,17 @@ class EventKeywords:
     @keyword
     @except_interop_exception
     def send_message(
-        self, message_name: str, process_instance_id: str = "", **variables: Any
-    ):
+        self,
+        message_name: str,
+        process_instance_id: str = "",
+        **variables: VariableValue,
+    ) -> None:
         """Alias for Correlate Message."""
         self.correlate_message(message_name, process_instance_id, **variables)
 
     @keyword
     @except_interop_exception
-    def signal_event(self, signal_name: str):
+    def signal_event(self, signal_name: str) -> None:
         """Sends a signal event to all waiting executions."""
         assert self.ctx.engine, "No engine"
         runtime = self.ctx.engine.getRuntimeService()
@@ -50,7 +59,7 @@ class EventKeywords:
 
     @keyword
     @except_interop_exception
-    def throw_signal(self, signal_name: str):
+    def throw_signal(self, signal_name: str) -> None:
         """Alias for Signal Event."""
         self.signal_event(signal_name)
 
@@ -58,7 +67,7 @@ class EventKeywords:
     @except_interop_exception
     def should_have_incident(
         self, incident_type: str = "", process_instance_id: str = ""
-    ) -> list:
+    ) -> list[dict[str, str | None]]:
         """Asserts that the process instance has at least one incident. Defaults to the current instance.
 
         Returns a list of incident dicts with: id, incidentType, activityId, message.
