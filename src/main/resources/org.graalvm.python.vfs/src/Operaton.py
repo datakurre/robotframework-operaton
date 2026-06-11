@@ -32,6 +32,7 @@ ProcessEngineConfiguration = (
     java.type("org.operaton.bpm.engine.ProcessEngineConfiguration"))
 assertThat: Any = (
     getattr(java.type("org.operaton.bpm.engine.test.assertions.bpmn.BpmnAwareTests"), "assertThat", None))
+FlowNode = java.type("org.operaton.bpm.model.bpmn.instance.FlowNode")
 
 try:
     _SpinPlugin = java.type("org.operaton.spin.plugin.impl.SpinProcessEnginePlugin")
@@ -270,6 +271,55 @@ class Operaton(DynamicCore):
             f"for instance '{instance_id}' — use the definition key instead"
         )
         return str(by_name.get(0).getTaskDefinitionKey())
+    
+    def _resolve_activity_id(self, process_definition_key: str, id_or_name: str) -> str:
+        """Return the BPMN flow-node id for *id_or_name* within *process_definition_key*.
+
+        If *id_or_name* already matches a deployed flow-node id, it is returned
+        unchanged. Otherwise it is treated as the BPMN element name and must
+        resolve to exactly one flow node in the latest deployed process definition.
+        """
+        if not id_or_name:
+            return ""
+        assert self.engine, "No engine"
+
+        repository = self.engine.getRepositoryService()
+        process_definition = (
+            repository.createProcessDefinitionQuery()
+            .processDefinitionKey(process_definition_key)
+            .latestVersion()
+            .singleResult()
+        )
+        assert process_definition is not None, (
+            f"No process definition with key '{process_definition_key}' is deployed"
+        )
+
+        model = repository.getBpmnModelInstance(str(process_definition.getId()))
+        assert model is not None, (
+            f"No BPMN model found for process '{process_definition_key}'"
+        )
+
+        flow_nodes = model.getModelElementsByType(FlowNode)
+        matches = []
+        for i in range(int(flow_nodes.size())):
+            flow_node = flow_nodes.get(i)
+            flow_node_id = str(flow_node.getId())
+            if flow_node_id == id_or_name:
+                return flow_node_id
+
+            name = flow_node.getName()
+            if name and str(name) == id_or_name:
+                matches.append(flow_node_id)
+
+        assert matches, (
+            f"No activity with id or name '{id_or_name}' found in process "
+            f"'{process_definition_key}'"
+        )
+        assert len(matches) == 1, (
+            f"Ambiguous activity name '{id_or_name}' in process "
+            f"'{process_definition_key}': matched ids {matches} - use the activity id instead"
+        )
+        return matches[0]
 
     @keyword
     @except_interop_exception
@@ -501,9 +551,10 @@ class Operaton(DynamicCore):
                 var_map.putValue(name, value)
             builder = builder.setVariables(var_map)
 
-        started = builder.startBeforeActivity(activity_id).execute()
+        resolved_activity_id = self._resolve_activity_id(process_definition_key, activity_id)
+        started = builder.startBeforeActivity(resolved_activity_id).execute()
         assert started is not None, (
-            f"Engine returned no instance for activity '{activity_id}' "
+            f"Engine returned no instance for activity '{resolved_activity_id}' "
             f"in process '{process_definition_key}'"
         )
         instance_id = str(started.getId())
