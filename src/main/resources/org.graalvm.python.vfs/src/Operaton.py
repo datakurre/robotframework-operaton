@@ -29,10 +29,14 @@ except ImportError:
             pass
 
 
-ProcessEngineConfiguration = (
-    java.type("org.operaton.bpm.engine.ProcessEngineConfiguration"))
-assertThat: Any = (
-    getattr(java.type("org.operaton.bpm.engine.test.assertions.bpmn.BpmnAwareTests"), "assertThat", None))
+ProcessEngineConfiguration = java.type(
+    "org.operaton.bpm.engine.ProcessEngineConfiguration"
+)
+assertThat: Any = getattr(
+    java.type("org.operaton.bpm.engine.test.assertions.bpmn.BpmnAwareTests"),
+    "assertThat",
+    None,
+)
 FlowNode = java.type("org.operaton.bpm.model.bpmn.instance.FlowNode")
 
 try:
@@ -209,9 +213,11 @@ class Operaton(DynamicCore):
             assert self.engine, "No engine"
             # Try runtime (active) first
             runtime = self.engine.getRuntimeService()
-            results = (runtime.createProcessInstanceQuery()
-                       .processInstanceBusinessKey(self._current_business_key)
-                       .list())
+            results = (
+                runtime.createProcessInstanceQuery()
+                .processInstanceBusinessKey(self._current_business_key)
+                .list()
+            )
             count = int(results.size())
             if count == 1:
                 return str(results.get(0).getId())
@@ -222,9 +228,11 @@ class Operaton(DynamicCore):
                 )
             # Fall back to history (ended instances)
             history = self.engine.getHistoryService()
-            hist_results = (history.createHistoricProcessInstanceQuery()
-                            .processInstanceBusinessKey(self._current_business_key)
-                            .list())
+            hist_results = (
+                history.createHistoricProcessInstanceQuery()
+                .processInstanceBusinessKey(self._current_business_key)
+                .list()
+            )
             hist_count = int(hist_results.size())
             if hist_count == 1:
                 return str(hist_results.get(0).getId())
@@ -250,18 +258,22 @@ class Operaton(DynamicCore):
             return ""
         assert self.engine, "No engine"
         task_service = self.engine.getTaskService()
-        by_key = (task_service.createTaskQuery()
-                  .processInstanceId(instance_id)
-                  .taskDefinitionKey(key_or_name)
-                  .list())
+        by_key = (
+            task_service.createTaskQuery()
+            .processInstanceId(instance_id)
+            .taskDefinitionKey(key_or_name)
+            .list()
+        )
         if int(by_key.size()) > 0:
             # It's already a definition key
             return key_or_name
         # Try matching by name
-        by_name = (task_service.createTaskQuery()
-                   .processInstanceId(instance_id)
-                   .taskName(key_or_name)
-                   .list())
+        by_name = (
+            task_service.createTaskQuery()
+            .processInstanceId(instance_id)
+            .taskName(key_or_name)
+            .list()
+        )
         name_count = int(by_name.size())
         assert name_count > 0, (
             f"No task with definition key or name '{key_or_name}' "
@@ -397,7 +409,9 @@ class Operaton(DynamicCore):
     @keyword
     @except_interop_exception
     @with_authenticated_user
-    def start_instance(self, process_definition_key: str, business_key: str = "", user_id: str = "") -> str:
+    def start_instance(
+        self, process_definition_key: str, business_key: str = "", user_id: str = ""
+    ) -> str:
         """Starts a process instance and stores it as the current instance.
 
         If *business_key* is not provided, a UUID4 is generated automatically.
@@ -405,7 +419,7 @@ class Operaton(DynamicCore):
         automatically by subsequent keywords that accept ``process_instance_id``.
 
         If *user_id* is provided, it is set as the authenticated user on the engine
-        before the instance is started. 
+        before the instance is started.
         This is required for the engine to populate initiator variables defined on the BPMN start event
         (e.g. ``camunda:initiator="author"`` stores user_id in the ``author``
         process variable).
@@ -414,7 +428,9 @@ class Operaton(DynamicCore):
         if not business_key:
             business_key = str(uuid.uuid4())
         runtime = self.engine.getRuntimeService()
-        instance = runtime.startProcessInstanceByKey(process_definition_key, business_key)
+        instance = runtime.startProcessInstanceByKey(
+            process_definition_key, business_key
+        )
         assertThat(instance).isStarted()
         self._current_instance_id = str(instance.getId())
         self._current_business_key = business_key
@@ -435,18 +451,31 @@ class Operaton(DynamicCore):
         resolved_key = self._resolve_task_key(instance_id, name)
         task_service = self.engine.getTaskService()
         if resolved_key:
-            tasks = task_service.createTaskQuery().processInstanceId(instance_id).taskDefinitionKey(resolved_key).list()
-            assert int(tasks.size()) > 0, (
-                f"No active task with key or name '{name}' for instance '{instance_id}'"
+            tasks = (
+                task_service.createTaskQuery()
+                .processInstanceId(instance_id)
+                .taskDefinitionKey(resolved_key)
+                .list()
             )
+            assert (
+                int(tasks.size()) > 0
+            ), f"No active task with key or name '{name}' for instance '{instance_id}'"
         else:
-            count = int(task_service.createTaskQuery().processInstanceId(instance_id).count())
+            count = int(
+                task_service.createTaskQuery().processInstanceId(instance_id).count()
+            )
             assert count > 0, f"No active tasks found for instance '{instance_id}'"
 
     @keyword
     @except_interop_exception
     @with_authenticated_user
-    def complete_task(self, name: str = "", process_instance_id: str = "", user_id: str = "", **variables: Any):
+    def complete_task(
+        self,
+        name: str = "",
+        process_instance_id: str = "",
+        user_id: str = "",
+        **variables: Any,
+    ):
         """Completes the active user task for the process instance.
 
         Uses the current instance in scope (set by ``Start Instance``) unless
@@ -476,7 +505,9 @@ class Operaton(DynamicCore):
 
     @keyword
     @except_interop_exception
-    def get_process_variable(self, variable_name: str, process_instance_id: str = "") -> Any:
+    def get_process_variable(
+        self, variable_name: str, process_instance_id: str = ""
+    ) -> Any:
         """Returns the value of a process variable.
 
         Defaults to the current instance in scope; pass ``process_instance_id`` to override.
@@ -488,7 +519,12 @@ class Operaton(DynamicCore):
 
     @keyword
     @except_interop_exception
-    def set_process_variable(self, variable_name: str, variable_value: Any = None, process_instance_id: str = ""):
+    def set_process_variable(
+        self,
+        variable_name: str,
+        variable_value: Any = None,
+        process_instance_id: str = "",
+    ):
         """Sets a process variable.
 
         Defaults to the current instance in scope; pass ``process_instance_id`` to override.
@@ -500,11 +536,13 @@ class Operaton(DynamicCore):
 
     @keyword
     @except_interop_exception
-    def set_date_process_variable(self,
-                                  variable_name: str,
-                                  variable_value: Any,
-                                  pattern: str = "yyyy-MM-dd'T'HH:mm:ssX",
-                                  process_instance_id: str = ""):
+    def set_date_process_variable(
+        self,
+        variable_name: str,
+        variable_value: Any,
+        pattern: str = "yyyy-MM-dd'T'HH:mm:ssX",
+        process_instance_id: str = "",
+    ):
         """Parses variable_value as Java Date and sets it as a process variable.
 
         This is needed when a real java.util.Date value is required.
@@ -532,18 +570,26 @@ class Operaton(DynamicCore):
         result = []
         for i in range(int(tasks.size())):
             task = tasks.get(i)
-            result.append({
-                "id": str(task.getId()),
-                "name": str(task.getName()) if task.getName() else None,
-                "taskDefinitionKey": str(task.getTaskDefinitionKey()),
-                "assignee": str(task.getAssignee()) if task.getAssignee() else None,
-            })
+            result.append(
+                {
+                    "id": str(task.getId()),
+                    "name": str(task.getName()) if task.getName() else None,
+                    "taskDefinitionKey": str(task.getTaskDefinitionKey()),
+                    "assignee": str(task.getAssignee()) if task.getAssignee() else None,
+                }
+            )
         return result
 
     @keyword
     @except_interop_exception
     @with_authenticated_user
-    def start_instance_with_variables(self, process_definition_key: str, business_key: str = "", user_id: str = "", **variables: Any) -> str:
+    def start_instance_with_variables(
+        self,
+        process_definition_key: str,
+        business_key: str = "",
+        user_id: str = "",
+        **variables: Any,
+    ) -> str:
         """Starts a process instance with the given variables and stores it as the current instance.
 
         If *business_key* is not provided, a UUID4 is generated automatically.
@@ -556,18 +602,29 @@ class Operaton(DynamicCore):
             var_map = Variables.createVariables()
             for name, value in variables.items():
                 var_map.putValue(name, value)
-            instance = runtime.startProcessInstanceByKey(process_definition_key, business_key, var_map)
+            instance = runtime.startProcessInstanceByKey(
+                process_definition_key, business_key, var_map
+            )
         else:
-            instance = runtime.startProcessInstanceByKey(process_definition_key, business_key)
+            instance = runtime.startProcessInstanceByKey(
+                process_definition_key, business_key
+            )
         assertThat(instance).isStarted()
         self._current_instance_id = str(instance.getId())
         self._current_business_key = business_key
         return self._current_instance_id
-    
+
     @keyword
     @except_interop_exception
     @with_authenticated_user
-    def start_instance_before_activity(self, process_definition_key: str, activity_id: str, business_key: str = "", user_id: str = "", **variables: Any) -> str:
+    def start_instance_before_activity(
+        self,
+        process_definition_key: str,
+        activity_id: str,
+        business_key: str = "",
+        user_id: str = "",
+        **variables: Any,
+    ) -> str:
         """Starts a process instance and places the token immediately before *activity_id*.
 
         Behaves like Start Instance With Variables but positions the token before the
@@ -578,7 +635,9 @@ class Operaton(DynamicCore):
         if not business_key:
             business_key = str(uuid.uuid4())
         runtime = self.engine.getRuntimeService()
-        builder = runtime.createProcessInstanceByKey(process_definition_key).businessKey(business_key)
+        builder = runtime.createProcessInstanceByKey(
+            process_definition_key
+        ).businessKey(business_key)
         if variables:
             var_map = Variables.createVariables()
             for name, value in variables.items():
@@ -596,7 +655,7 @@ class Operaton(DynamicCore):
         self._current_instance_id = instance_id
         self._current_business_key = business_key
         return self._current_instance_id
-    
+
     @keyword
     @except_interop_exception
     def move_instance_to(self, activity_id: str, process_instance_id: str = ""):
@@ -612,7 +671,9 @@ class Operaton(DynamicCore):
         runtime = self.engine.getRuntimeService()
 
         # Find active executions with an activity id
-        executions = runtime.createExecutionQuery().processInstanceId(instance_id).list()
+        executions = (
+            runtime.createExecutionQuery().processInstanceId(instance_id).list()
+        )
         active_activities = []
         for i in range(int(executions.size())):
             exe = executions.get(i)
@@ -652,16 +713,24 @@ class Operaton(DynamicCore):
         assert self.engine, "No engine"
         instance_id = self._resolve_instance_id(process_instance_id)
         history = self.engine.getHistoryService()
-        items = (history.createHistoricActivityInstanceQuery()
-                 .processInstanceId(instance_id)
-                 .unfinished()
-                 .list())
+        items = (
+            history.createHistoricActivityInstanceQuery()
+            .processInstanceId(instance_id)
+            .unfinished()
+            .list()
+        )
         result = []
         for i in range(int(items.size())):
             item = items.get(i)
-            result.append({
-                "activityId": str(item.getActivityId()),
-                "activityName": str(item.getActivityName()) if item.getActivityName() else None,
-                "activityType": str(item.getActivityType()) if item.getActivityType() else None,
-            })
+            result.append(
+                {
+                    "activityId": str(item.getActivityId()),
+                    "activityName": (
+                        str(item.getActivityName()) if item.getActivityName() else None
+                    ),
+                    "activityType": (
+                        str(item.getActivityType()) if item.getActivityType() else None
+                    ),
+                }
+            )
         return result

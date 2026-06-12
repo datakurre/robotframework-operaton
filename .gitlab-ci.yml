@@ -20,6 +20,17 @@ variables:
 
 # ── Test ──────────────────────────────────────────────────────────────────────
 
+format:
+  stage: test
+  image: nixos/nix:2.25.3
+  tags:
+    - executor-podman
+  script:
+    - export NIX_CONFIG="experimental-features = nix-command flakes"
+    - nix run github:cachix/devenv/latest -- shell --no-eval-cache -- treefmt --ci
+  except:
+    - tags
+
 check:
   stage: test
   image: maven:3-eclipse-temurin-21

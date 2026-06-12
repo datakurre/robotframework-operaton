@@ -19,7 +19,7 @@ await esbuild.build({
   target: "node18",
   format: "cjs",
   outfile: outFile,
-  external: [],           // bundle everything — no node_modules at runtime
+  external: [], // bundle everything — no node_modules at runtime
   // bpmn-js dist bundle is a UMD file — mark as external and handle separately
   plugins: [
     {
@@ -31,7 +31,7 @@ await esbuild.build({
           return {
             path: resolve(
               __dirname,
-              "node_modules/bpmn-js/dist/bpmn-viewer.production.min.js"
+              "node_modules/bpmn-js/dist/bpmn-viewer.production.min.js",
             ),
           };
         });
@@ -41,7 +41,7 @@ await esbuild.build({
   define: {
     "process.env.NODE_ENV": '"production"',
   },
-  minify: false,   // keep readable for easier debugging; bundle is ~700KB anyway
+  minify: false, // keep readable for easier debugging; bundle is ~700KB anyway
   sourcemap: false,
   logLevel: "info",
 });

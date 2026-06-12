@@ -1,23 +1,21 @@
 *** Settings ***
+Library     Operaton
 
-Library    Operaton
 
 *** Test Cases ***
-
 Move To Activity
     [Setup]    Setup Process Engine
-    [Teardown]    Teardown Process Engine
     Deploy Resources    ${CURDIR}${/}xor-gateway-process.bpmn
     Start Instance    xor-gateway-process
     Move Instance To    rejected-task
     Should Have Task    rejected-task
     Complete Task    rejected-task
     Log Bpmn Execution
+    [Teardown]    Teardown Process Engine
 
 Move Instance To Fails When Multiple Tokens
     [Documentation]    Verifies move_instance_to raises when multiple active tokens exist.
     [Setup]    Setup Process Engine
-    [Teardown]    Teardown Process Engine
     Deploy Resources    ${CURDIR}${/}multi-task-process.bpmn
     ${id}=    Start Instance    multi-task-process
     ${acts}=    Get Active Activities    ${id}
@@ -27,11 +25,11 @@ Move Instance To Fails When Multiple Tokens
     ...    *requires exactly one active token*
     ...    Move Instance To    Activity_T1    ${id}
     Log Bpmn Execution
+    [Teardown]    Teardown Process Engine
 
 Move Instance To Fails When No Active Token
     [Documentation]    Verifies move_instance_to raises when instance has finished.
     [Setup]    Setup Process Engine
-    [Teardown]    Teardown Process Engine
     Deploy Resources    ${CURDIR}${/}multi-task-process.bpmn
     ${id}=    Start Instance    multi-task-process
     Complete Task    Task A    ${id}
@@ -40,3 +38,4 @@ Move Instance To Fails When No Active Token
     ...    *requires exactly one active token*
     ...    Move Instance To    Activity_T1    ${id}
     Log Bpmn Execution
+    [Teardown]    Teardown Process Engine

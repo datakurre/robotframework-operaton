@@ -9,6 +9,7 @@ from keywords.base import except_interop_exception
 try:
     import java  # pyright: ignore
 except ImportError:
+
     class java:
         @staticmethod
         def type(klass: str) -> Any:
@@ -34,9 +35,7 @@ class BpmnKeywords:
         assert self.ctx.engine, "No engine"
         instance_id = self.ctx._resolve_instance_id(process_instance_id)
 
-        BpmnRenderer = java.type(
-            "org.operaton.bpm.extension.robot.BpmnRenderer"
-        )
+        BpmnRenderer = java.type("org.operaton.bpm.extension.robot.BpmnRenderer")
         if not BpmnRenderer.isNodeAvailable():
             logger.warn(
                 f"BPMN rendering skipped: 'node' not found on PATH "
@@ -50,9 +49,9 @@ class BpmnKeywords:
             .processInstanceId(instance_id)
             .singleResult()
         )
-        assert instance is not None, (
-            f"Process instance '{instance_id}' not found in history"
-        )
+        assert (
+            instance is not None
+        ), f"Process instance '{instance_id}' not found in history"
         process_def_id = str(instance.getProcessDefinitionId())
 
         # Fetch BPMN XML via RepositoryService
@@ -74,9 +73,7 @@ class BpmnKeywords:
 
         # Collect incident activity IDs
         incidents_raw = (
-            history.createHistoricIncidentQuery()
-            .processInstanceId(instance_id)
-            .list()
+            history.createHistoricIncidentQuery().processInstanceId(instance_id).list()
         )
         incident_activity_ids = set()
         for i in range(int(incidents_raw.size())):
@@ -86,13 +83,15 @@ class BpmnKeywords:
         activities = []
         for i in range(int(activities_raw.size())):
             act = activities_raw.get(i)
-            activities.append({
-                "activityId": str(act.getActivityId()),
-                "activityType": str(act.getActivityType()),
-                "canceled": bool(act.isCanceled()),
-                "completed": act.getEndTime() is not None,
-                "incident": str(act.getActivityId()) in incident_activity_ids,
-            })
+            activities.append(
+                {
+                    "activityId": str(act.getActivityId()),
+                    "activityType": str(act.getActivityType()),
+                    "canceled": bool(act.isCanceled()),
+                    "completed": act.getEndTime() is not None,
+                    "incident": str(act.getActivityId()) in incident_activity_ids,
+                }
+            )
 
         input_json = json.dumps({"bpmn": bpmn_xml, "activities": activities})
 
@@ -106,4 +105,4 @@ class BpmnKeywords:
                 f'style="max-width:100%;overflow:auto">{svg}</div>'
             )
         except Exception as exc:
-            print(f'*WARN* BPMN rendering failed: {exc}')
+            print(f"*WARN* BPMN rendering failed: {exc}")

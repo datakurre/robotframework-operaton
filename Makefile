@@ -1,5 +1,4 @@
 JAVA = $(shell which java)
-JAVA_FILES := $(shell find . -name "*.java" -path "*/src/*" -not -path "./tmp/*" -type f)
 JAR := target/operaton-bpm-extension-robot-1.0-SNAPSHOT.jar
 JAR_FAT := target/operaton-bpm-extension-robot-1.0-SNAPSHOT-fat.jar
 JAR_VASARA := target/operaton-bpm-extension-robot-1.0-SNAPSHOT-vasara.jar
@@ -225,8 +224,12 @@ remote-dev:  ## Maven classpath runner
 ##@ Misc
 
 .PHONY: format
-format:  ## google-java-format all Java source files
-	google-java-format -i $(JAVA_FILES)
+format:  ## Format sources with treefmt
+	treefmt
+
+.PHONY: format-check
+format-check:  ## Verify formatting with treefmt --ci
+	treefmt --ci
 
 .PHONY: install-proxy
 install-proxy:  ## pip install -e python/

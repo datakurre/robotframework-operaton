@@ -6,6 +6,7 @@ from keywords.base import Variables, except_interop_exception, with_authenticate
 try:
     import java  # pyright: ignore
 except ImportError:
+
     class java:
         @staticmethod
         def type(klass: str) -> Any:

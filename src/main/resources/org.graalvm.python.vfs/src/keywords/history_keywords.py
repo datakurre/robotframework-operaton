@@ -6,6 +6,7 @@ from keywords.base import except_interop_exception
 try:
     import java  # pyright: ignore
 except ImportError:
+
     class java:
         @staticmethod
         def type(klass: str) -> Any:
@@ -33,12 +34,16 @@ class HistoryKeywords:
         result = []
         for i in range(int(instances.size())):
             inst = instances.get(i)
-            result.append({
-                "id": str(inst.getId()),
-                "processDefinitionKey": str(inst.getProcessDefinitionKey()),
-                "startTime": str(inst.getStartTime()) if inst.getStartTime() else None,
-                "endTime": str(inst.getEndTime()) if inst.getEndTime() else None,
-            })
+            result.append(
+                {
+                    "id": str(inst.getId()),
+                    "processDefinitionKey": str(inst.getProcessDefinitionKey()),
+                    "startTime": (
+                        str(inst.getStartTime()) if inst.getStartTime() else None
+                    ),
+                    "endTime": str(inst.getEndTime()) if inst.getEndTime() else None,
+                }
+            )
         return result
 
     @keyword
@@ -51,14 +56,19 @@ class HistoryKeywords:
         assert self.ctx.engine, "No engine"
         instance_id = self.ctx._resolve_instance_id(process_instance_id)
         history = self.ctx.engine.getHistoryService()
-        variables = history.createHistoricVariableInstanceQuery() \
-            .processInstanceId(instance_id).list()
+        variables = (
+            history.createHistoricVariableInstanceQuery()
+            .processInstanceId(instance_id)
+            .list()
+        )
         result = {}
         for i in range(int(variables.size())):
             var = variables.get(i)
             val = var.getValue()
             # Ensure value is Python-native for Remote protocol compatibility
-            if val is not None and not isinstance(val, (str, int, float, bool, list, dict)):
+            if val is not None and not isinstance(
+                val, (str, int, float, bool, list, dict)
+            ):
                 val = str(val)
             result[str(var.getName())] = val
         return result
@@ -74,20 +84,25 @@ class HistoryKeywords:
         assert self.ctx.engine, "No engine"
         instance_id = self.ctx._resolve_instance_id(process_instance_id)
         history = self.ctx.engine.getHistoryService()
-        activities = (history.createHistoricActivityInstanceQuery()
-                      .processInstanceId(instance_id)
-                      .orderByHistoricActivityInstanceStartTime().asc()
-                      .list())
+        activities = (
+            history.createHistoricActivityInstanceQuery()
+            .processInstanceId(instance_id)
+            .orderByHistoricActivityInstanceStartTime()
+            .asc()
+            .list()
+        )
         result = []
         for i in range(int(activities.size())):
             act = activities.get(i)
-            result.append({
-                "activityId": str(act.getActivityId()),
-                "activityName": str(act.getActivityName() or ""),
-                "activityType": str(act.getActivityType()),
-                "canceled": bool(act.isCanceled()),
-                "completed": act.getEndTime() is not None,
-            })
+            result.append(
+                {
+                    "activityId": str(act.getActivityId()),
+                    "activityName": str(act.getActivityName() or ""),
+                    "activityType": str(act.getActivityType()),
+                    "canceled": bool(act.isCanceled()),
+                    "completed": act.getEndTime() is not None,
+                }
+            )
         return result
 
     @keyword
@@ -113,10 +128,12 @@ class HistoryKeywords:
         assert self.ctx.engine, "No engine"
         instance_id = self.ctx._resolve_instance_id(process_instance_id)
         history = self.ctx.engine.getHistoryService()
-        instance = (history.createHistoricProcessInstanceQuery()
-                    .processInstanceId(instance_id)
-                    .singleResult())
-        assert instance is not None, (
-            f"Process instance '{instance_id}' not found in history"
+        instance = (
+            history.createHistoricProcessInstanceQuery()
+            .processInstanceId(instance_id)
+            .singleResult()
         )
+        assert (
+            instance is not None
+        ), f"Process instance '{instance_id}' not found in history"
         return str(instance.getProcessDefinitionId())

@@ -45,7 +45,7 @@ const MINIMAL_BPMN = `<?xml version="1.0" encoding="UTF-8"?>
 async function spike(bpmnXml) {
   // Set up a DOM environment via linkedom
   const { window, document } = parseHTML(
-    `<!DOCTYPE html><html><head></head><body><div id="canvas"></div></body></html>`
+    `<!DOCTYPE html><html><head></head><body><div id="canvas"></div></body></html>`,
   );
 
   // Install SVG polyfills that bpmn-js needs
@@ -72,7 +72,10 @@ async function spike(bpmnXml) {
   // so our stub doesn't persist transforms to the DOM attribute.
   // Fix: manually set transform attributes from the element registry data.
   const elementRegistry = viewer.get("elementRegistry");
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity;
   for (const element of elementRegistry.getAll()) {
     if (element.x !== undefined) {
       const gfx = elementRegistry.getGraphics(element);
@@ -98,8 +101,10 @@ async function spike(bpmnXml) {
   const svgRoot = viewer.get("canvas")._svg;
   if (svgRoot && isFinite(minX)) {
     const pad = 20;
-    const vbX = minX - pad, vbY = minY - pad;
-    const vbW = maxX - minX + 2 * pad, vbH = maxY - minY + 2 * pad;
+    const vbX = minX - pad,
+      vbY = minY - pad;
+    const vbW = maxX - minX + 2 * pad,
+      vbH = maxY - minY + 2 * pad;
     svgRoot.setAttribute("viewBox", `${vbX} ${vbY} ${vbW} ${vbH}`);
     svgRoot.setAttribute("width", `${vbW}`);
     svgRoot.setAttribute("height", `${vbH}`);
@@ -112,8 +117,10 @@ async function spike(bpmnXml) {
   // Fix viewBox via post-processing (setAttribute on internal _svg may not persist)
   if (isFinite(minX)) {
     const pad = 20;
-    const vbX = minX - pad, vbY = minY - pad;
-    const vbW = maxX - minX + 2 * pad, vbH = maxY - minY + 2 * pad;
+    const vbX = minX - pad,
+      vbY = minY - pad;
+    const vbW = maxX - minX + 2 * pad,
+      vbH = maxY - minY + 2 * pad;
     svg = svg
       .replace(/ width="[^"]*"/, ` width="${vbW}"`)
       .replace(/ height="[^"]*"/, ` height="${vbH}"`)
@@ -127,18 +134,50 @@ async function spike(bpmnXml) {
 function installPolyfills(window, document) {
   // SVGMatrix stub
   class SVGMatrix {
-    constructor() { Object.assign(this, { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }); }
-    multiply(m) { return m; }
-    inverse() { return new SVGMatrix(); }
-    translate(x, y) { const m = new SVGMatrix(); m.e = x; m.f = y; return m; }
-    scale(s) { const m = new SVGMatrix(); m.a = m.d = s; return m; }
-    scaleNonUniform(sx, sy) { const m = new SVGMatrix(); m.a = sx; m.d = sy; return m; }
-    rotate(r) { return new SVGMatrix(); }
-    rotateFromVector(x, y) { return new SVGMatrix(); }
-    flipX() { return new SVGMatrix(); }
-    flipY() { return new SVGMatrix(); }
-    skewX(a) { return new SVGMatrix(); }
-    skewY(a) { return new SVGMatrix(); }
+    constructor() {
+      Object.assign(this, { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 });
+    }
+    multiply(m) {
+      return m;
+    }
+    inverse() {
+      return new SVGMatrix();
+    }
+    translate(x, y) {
+      const m = new SVGMatrix();
+      m.e = x;
+      m.f = y;
+      return m;
+    }
+    scale(s) {
+      const m = new SVGMatrix();
+      m.a = m.d = s;
+      return m;
+    }
+    scaleNonUniform(sx, sy) {
+      const m = new SVGMatrix();
+      m.a = sx;
+      m.d = sy;
+      return m;
+    }
+    rotate(r) {
+      return new SVGMatrix();
+    }
+    rotateFromVector(x, y) {
+      return new SVGMatrix();
+    }
+    flipX() {
+      return new SVGMatrix();
+    }
+    flipY() {
+      return new SVGMatrix();
+    }
+    skewX(a) {
+      return new SVGMatrix();
+    }
+    skewY(a) {
+      return new SVGMatrix();
+    }
   }
   window.SVGMatrix = SVGMatrix;
 
@@ -153,30 +192,70 @@ function installPolyfills(window, document) {
       this.SVG_TRANSFORM_SCALE = 3;
       this.SVG_TRANSFORM_ROTATE = 4;
     }
-    setMatrix(m) { this.matrix = m; }
-    setTranslate(x, y) { this.type = 2; this.matrix.e = x; this.matrix.f = y; }
-    setScale(sx, sy) { this.type = 3; this.matrix.a = sx; this.matrix.d = sy; }
-    setRotate(angle) { this.type = 4; this.angle = angle; }
+    setMatrix(m) {
+      this.matrix = m;
+    }
+    setTranslate(x, y) {
+      this.type = 2;
+      this.matrix.e = x;
+      this.matrix.f = y;
+    }
+    setScale(sx, sy) {
+      this.type = 3;
+      this.matrix.a = sx;
+      this.matrix.d = sy;
+    }
+    setRotate(angle) {
+      this.type = 4;
+      this.angle = angle;
+    }
   }
   window.SVGTransform = SVGTransform;
 
   // SVGTransformList stub
   class SVGTransformList {
-    constructor() { this._items = []; }
-    get length() { return this._items.length; }
-    get numberOfItems() { return this._items.length; }
-    appendItem(t) { this._items.push(t); return t; }
-    getItem(i) { return this._items[i]; }
-    clear() { this._items = []; }
-    initialize(t) { this._items = [t]; return t; }
-    createSVGTransformFromMatrix(m) { const t = new SVGTransform(); t.matrix = m; return t; }
-    consolidate() { return this._items[0] || null; }
+    constructor() {
+      this._items = [];
+    }
+    get length() {
+      return this._items.length;
+    }
+    get numberOfItems() {
+      return this._items.length;
+    }
+    appendItem(t) {
+      this._items.push(t);
+      return t;
+    }
+    getItem(i) {
+      return this._items[i];
+    }
+    clear() {
+      this._items = [];
+    }
+    initialize(t) {
+      this._items = [t];
+      return t;
+    }
+    createSVGTransformFromMatrix(m) {
+      const t = new SVGTransform();
+      t.matrix = m;
+      return t;
+    }
+    consolidate() {
+      return this._items[0] || null;
+    }
   }
 
   // SVGPoint stub
   class SVGPoint {
-    constructor() { this.x = 0; this.y = 0; }
-    matrixTransform(m) { return new SVGPoint(); }
+    constructor() {
+      this.x = 0;
+      this.y = 0;
+    }
+    matrixTransform(m) {
+      return new SVGPoint();
+    }
   }
   window.SVGPoint = SVGPoint;
 
@@ -184,23 +263,35 @@ function installPolyfills(window, document) {
   if (proto) {
     // getBBox: return non-zero size so bpmn-js doesn't treat elements as invisible
     if (!proto.getBBox) {
-      proto.getBBox = function () { return { x: 0, y: 0, width: 100, height: 30 }; };
+      proto.getBBox = function () {
+        return { x: 0, y: 0, width: 100, height: 30 };
+      };
     }
     if (!proto.getScreenCTM) {
-      proto.getScreenCTM = function () { return new SVGMatrix(); };
+      proto.getScreenCTM = function () {
+        return new SVGMatrix();
+      };
     }
     if (!proto.getComputedTextLength) {
-      proto.getComputedTextLength = function () { return (this.textContent || "").length * 6; };
+      proto.getComputedTextLength = function () {
+        return (this.textContent || "").length * 6;
+      };
     }
     // SVGSVGElement methods - needed on the root <svg> element
     if (!proto.createSVGMatrix) {
-      proto.createSVGMatrix = function () { return new SVGMatrix(); };
+      proto.createSVGMatrix = function () {
+        return new SVGMatrix();
+      };
     }
     if (!proto.createSVGTransform) {
-      proto.createSVGTransform = function () { return new SVGTransform(); };
+      proto.createSVGTransform = function () {
+        return new SVGTransform();
+      };
     }
     if (!proto.createSVGPoint) {
-      proto.createSVGPoint = function () { return new SVGPoint(); };
+      proto.createSVGPoint = function () {
+        return new SVGPoint();
+      };
     }
     if (!proto.createSVGTransformFromMatrix) {
       proto.createSVGTransformFromMatrix = function (m) {
@@ -246,14 +337,25 @@ function CSS_escape(str) {
   let result = "";
   for (let i = 0; i < str.length; i++) {
     const code = str.charCodeAt(i);
-    if (code === 0) { result += "\uFFFD"; continue; }
-    if ((code >= 0x01 && code <= 0x1F) || code === 0x7F ||
-        (i === 0 && code >= 0x30 && code <= 0x39) ||
-        (i === 1 && code >= 0x30 && code <= 0x39 && str.charCodeAt(0) === 0x2D)) {
+    if (code === 0) {
+      result += "\uFFFD";
+      continue;
+    }
+    if (
+      (code >= 0x01 && code <= 0x1f) ||
+      code === 0x7f ||
+      (i === 0 && code >= 0x30 && code <= 0x39) ||
+      (i === 1 && code >= 0x30 && code <= 0x39 && str.charCodeAt(0) === 0x2d)
+    ) {
       result += "\\" + code.toString(16) + " ";
-    } else if (code >= 0x80 || code === 0x2D || code === 0x5F ||
-               (code >= 0x30 && code <= 0x39) || (code >= 0x41 && code <= 0x5A) ||
-               (code >= 0x61 && code <= 0x7A)) {
+    } else if (
+      code >= 0x80 ||
+      code === 0x2d ||
+      code === 0x5f ||
+      (code >= 0x30 && code <= 0x39) ||
+      (code >= 0x41 && code <= 0x5a) ||
+      (code >= 0x61 && code <= 0x7a)
+    ) {
       result += str[i];
     } else {
       result += "\\" + str[i];
