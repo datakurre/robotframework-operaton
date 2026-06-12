@@ -4,6 +4,7 @@ from typing import Any
 
 import os
 import uuid
+import json
 
 from robotlibcore import DynamicCore
 
@@ -321,6 +322,39 @@ class Operaton(DynamicCore):
         )
         return matches[0]
 
+    def _to_process_variable_value(self, value: Any) -> Any:
+        """
+        Turn values into engine-friendly process variable values.
+
+        String JSON values need to be wrapped as Spin JSON values to be 
+        deserialized properly by the engine.
+        """
+        Spin = java.type("org.operaton.spin.Spin")
+
+        if isinstance(value, str):
+            stripped = value.strip()
+            # if the string looks like JSON, try to parse and wrap as Spin JSON
+            if (
+                (stripped.startswith("{") and stripped.endswith("}")) or
+                (stripped.startswith("[") and stripped.endswith("]"))
+            ):
+                try:
+                    json.loads(stripped)
+                    return Spin.JSON(stripped)
+                except Exception:
+                    # preserve original string if it looks like JSON but isn't parseable
+                    return value
+
+        # serialize structured non-primitive values as JSON and wrap as Spin JSON
+        if not isinstance(value, (str, int, float, bool)) and value is not None:
+            try:
+                return Spin.JSON(json.dumps(value))
+            except Exception:
+                return value
+
+        # primitive values are returned unchanged
+        return value
+
     @keyword
     @except_interop_exception
     def teardown_process_engine(self):
@@ -548,7 +582,7 @@ class Operaton(DynamicCore):
         if variables:
             var_map = Variables.createVariables()
             for name, value in variables.items():
-                var_map.putValue(name, value)
+                var_map.putValue(name, self._to_process_variable_value(value))
             builder = builder.setVariables(var_map)
 
         resolved_activity_id = self._resolve_activity_id(process_definition_key, activity_id)
