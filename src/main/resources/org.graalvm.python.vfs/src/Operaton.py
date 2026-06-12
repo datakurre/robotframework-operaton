@@ -340,7 +340,7 @@ class Operaton(DynamicCore):
         )
         return matches[0]
 
-    def _to_process_variable_value(self, value: Any) -> Any:
+    def _to_process_variable_value(self, value: object) -> object:
         """
         Turn values into engine-friendly process variable values.
 
