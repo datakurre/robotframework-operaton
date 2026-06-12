@@ -80,7 +80,6 @@ Start Before First Activity Behaves Like Normal Start
 Start Before Activity Resolves BPMN Activity Name
     [Documentation]    Verifies a descriptive BPMN element name can be used instead of the technical id.
     [Setup]    Setup Process Engine
-    [Teardown]    Teardown Process Engine
     Deploy Resources    ${CURDIR}${/}sequential-activities.bpmn
     Start Instance Before Activity    Process_1    Task B
     Should Have Task    Task B
