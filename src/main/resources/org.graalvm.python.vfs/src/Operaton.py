@@ -1,6 +1,6 @@
 from robot.api.deco import keyword
 from pathlib import Path
-from typing import Any
+from typing import Callable, Protocol, cast
 
 import os
 import uuid
@@ -8,7 +8,13 @@ import json
 
 from robotlibcore import DynamicCore
 
-from keywords.base import Variables, except_interop_exception, with_authenticated_user
+from keywords.base import (
+    InteropObject,
+    java,
+    Variables,
+    except_interop_exception,
+    with_authenticated_user,
+)
 from keywords.process_assertions import ProcessAssertions
 from keywords.event_keywords import EventKeywords
 from keywords.history_keywords import HistoryKeywords
@@ -19,33 +25,32 @@ from keywords.external_task_keywords import ExternalTaskKeywords
 from keywords.bpmn_keywords import BpmnKeywords
 from keywords.form_keywords import FormKeywords
 
-try:
-    import java  # pyright: ignore
-except ImportError:
-    # Fix typechecks outside graalpy
-    class java:
-        @staticmethod
-        def type(klass: str) -> Any:
-            pass
-
-
-ProcessEngineConfiguration = java.type(
+ProcessEngineConfiguration: InteropObject = java.type(
     "org.operaton.bpm.engine.ProcessEngineConfiguration"
 )
-assertThat: Any = getattr(
+
+
+class _StartAssertion(Protocol):
+    def isStarted(self) -> InteropObject: ...
+
+
+assert_that_obj = getattr(
     java.type("org.operaton.bpm.engine.test.assertions.bpmn.BpmnAwareTests"),
     "assertThat",
     None,
 )
+assertThat = cast(Callable[[InteropObject], _StartAssertion] | None, assert_that_obj)
 FlowNode = java.type("org.operaton.bpm.model.bpmn.instance.FlowNode")
 
 try:
-    _SpinPlugin = java.type("org.operaton.spin.plugin.impl.SpinProcessEnginePlugin")
+    _SpinPlugin: InteropObject | None = java.type(
+        "org.operaton.spin.plugin.impl.SpinProcessEnginePlugin"
+    )
 except Exception:
     _SpinPlugin = None
 
 try:
-    _VasaraPlugin = java.type("fi.jyu.vasara.VasaraPlugin")
+    _VasaraPlugin: InteropObject | None = java.type("fi.jyu.vasara.VasaraPlugin")
 except Exception:
     _VasaraPlugin = None
 
@@ -159,11 +164,11 @@ class Operaton(DynamicCore):
 
     ROBOT_LIBRARY_SCOPE = "GLOBAL"
 
-    engine: Any = None
+    engine: InteropObject | None = None
     _current_instance_id: str = ""
     _current_business_key: str = ""
 
-    def __init__(self):
+    def __init__(self) -> None:
         components = [
             ProcessAssertions(self),
             EventKeywords(self),
@@ -179,7 +184,7 @@ class Operaton(DynamicCore):
 
     @keyword
     @except_interop_exception
-    def setup_process_engine(self) -> Any:
+    def setup_process_engine(self) -> InteropObject:
         if self.engine is None:
             config = (
                 ProcessEngineConfiguration.createStandaloneInMemProcessEngineConfiguration()
@@ -369,7 +374,8 @@ class Operaton(DynamicCore):
 
     @keyword
     @except_interop_exception
-    def teardown_process_engine(self):
+    def teardown_process_engine(self) -> None:
+        assert self.engine is not None, "No engine"
         self.engine.close()
         self.engine = None
         self._current_instance_id = ""
@@ -431,6 +437,7 @@ class Operaton(DynamicCore):
         instance = runtime.startProcessInstanceByKey(
             process_definition_key, business_key
         )
+        assert assertThat is not None
         assertThat(instance).isStarted()
         self._current_instance_id = str(instance.getId())
         self._current_business_key = business_key
@@ -438,7 +445,7 @@ class Operaton(DynamicCore):
 
     @keyword
     @except_interop_exception
-    def should_have_task(self, name: str = "", process_instance_id: str = ""):
+    def should_have_task(self, name: str = "", process_instance_id: str = "") -> None:
         """Asserts that the process instance has an active task.
 
         Uses the current instance in scope (set by ``Start Instance``) unless
@@ -474,8 +481,8 @@ class Operaton(DynamicCore):
         name: str = "",
         process_instance_id: str = "",
         user_id: str = "",
-        **variables: Any,
-    ):
+        **variables: object,
+    ) -> None:
         """Completes the active user task for the process instance.
 
         Uses the current instance in scope (set by ``Start Instance``) unless
@@ -507,7 +514,7 @@ class Operaton(DynamicCore):
     @except_interop_exception
     def get_process_variable(
         self, variable_name: str, process_instance_id: str = ""
-    ) -> Any:
+    ) -> InteropObject:
         """Returns the value of a process variable.
 
         Defaults to the current instance in scope; pass ``process_instance_id`` to override.
@@ -522,9 +529,9 @@ class Operaton(DynamicCore):
     def set_process_variable(
         self,
         variable_name: str,
-        variable_value: Any = None,
+        variable_value: object | None = None,
         process_instance_id: str = "",
-    ):
+    ) -> None:
         """Sets a process variable.
 
         Defaults to the current instance in scope; pass ``process_instance_id`` to override.
@@ -539,10 +546,10 @@ class Operaton(DynamicCore):
     def set_date_process_variable(
         self,
         variable_name: str,
-        variable_value: Any,
+        variable_value: object,
         pattern: str = "yyyy-MM-dd'T'HH:mm:ssX",
         process_instance_id: str = "",
-    ):
+    ) -> None:
         """Parses variable_value as Java Date and sets it as a process variable.
 
         This is needed when a real java.util.Date value is required.
@@ -557,7 +564,7 @@ class Operaton(DynamicCore):
 
     @keyword
     @except_interop_exception
-    def get_tasks(self, process_instance_id: str = "") -> list:
+    def get_tasks(self, process_instance_id: str = "") -> list[dict[str, str | None]]:
         """Returns all active tasks for the process instance as a list of dicts.
 
         Each dict has: id, name, taskDefinitionKey, assignee.
@@ -567,7 +574,7 @@ class Operaton(DynamicCore):
         instance_id = self._resolve_instance_id(process_instance_id)
         task_service = self.engine.getTaskService()
         tasks = task_service.createTaskQuery().processInstanceId(instance_id).list()
-        result = []
+        result: list[dict[str, str | None]] = []
         for i in range(int(tasks.size())):
             task = tasks.get(i)
             result.append(
@@ -588,7 +595,7 @@ class Operaton(DynamicCore):
         process_definition_key: str,
         business_key: str = "",
         user_id: str = "",
-        **variables: Any,
+        **variables: object,
     ) -> str:
         """Starts a process instance with the given variables and stores it as the current instance.
 
@@ -609,6 +616,7 @@ class Operaton(DynamicCore):
             instance = runtime.startProcessInstanceByKey(
                 process_definition_key, business_key
             )
+        assert assertThat is not None
         assertThat(instance).isStarted()
         self._current_instance_id = str(instance.getId())
         self._current_business_key = business_key
@@ -623,7 +631,7 @@ class Operaton(DynamicCore):
         activity_id: str,
         business_key: str = "",
         user_id: str = "",
-        **variables: Any,
+        **variables: object,
     ) -> str:
         """Starts a process instance and places the token immediately before *activity_id*.
 
@@ -658,7 +666,7 @@ class Operaton(DynamicCore):
 
     @keyword
     @except_interop_exception
-    def move_instance_to(self, activity_id: str, process_instance_id: str = ""):
+    def move_instance_to(self, activity_id: str, process_instance_id: str = "") -> None:
         """Moves the execution of the process instance to the given activity.
 
         Example usage:
@@ -667,6 +675,7 @@ class Operaton(DynamicCore):
         | Move Instance To    Activity_10   ${instance}
         | Should Have Task    Review Order    ${instance}
         """
+        assert self.engine, "No engine"
         instance_id = self._resolve_instance_id(process_instance_id)
         runtime = self.engine.getRuntimeService()
 
@@ -674,7 +683,7 @@ class Operaton(DynamicCore):
         executions = (
             runtime.createExecutionQuery().processInstanceId(instance_id).list()
         )
-        active_activities = []
+        active_activities: list[str] = []
         for i in range(int(executions.size())):
             exe = executions.get(i)
             try:
@@ -700,7 +709,9 @@ class Operaton(DynamicCore):
 
     @keyword
     @except_interop_exception
-    def get_active_activities(self, process_instance_id: str = "") -> list:
+    def get_active_activities(
+        self, process_instance_id: str = ""
+    ) -> list[dict[str, str | None]]:
         """Returns the IDs of all currently active (unfinished) activities.
 
         Useful for diagnosing where the token is when a test gets stuck.
@@ -719,7 +730,7 @@ class Operaton(DynamicCore):
             .unfinished()
             .list()
         )
-        result = []
+        result: list[dict[str, str | None]] = []
         for i in range(int(items.size())):
             item = items.get(i)
             result.append(

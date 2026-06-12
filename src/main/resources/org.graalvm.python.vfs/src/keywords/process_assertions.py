@@ -1,17 +1,20 @@
 from robot.api.deco import keyword
-from typing import Any
+from typing import TYPE_CHECKING
 
 from keywords.base import except_interop_exception
 
 
-class ProcessAssertions:
+if TYPE_CHECKING:
+    from Operaton import Operaton
 
-    def __init__(self, ctx: Any):
+
+class ProcessAssertions:
+    def __init__(self, ctx: "Operaton") -> None:
         self.ctx = ctx
 
     @keyword
     @except_interop_exception
-    def should_be_ended(self, process_instance_id: str = ""):
+    def should_be_ended(self, process_instance_id: str = "") -> None:
         """Asserts that the process instance has ended. Defaults to the current instance."""
         assert self.ctx.engine, "No engine"
         instance_id = self.ctx._resolve_instance_id(process_instance_id)
@@ -30,7 +33,7 @@ class ProcessAssertions:
 
     @keyword
     @except_interop_exception
-    def should_be_active(self, process_instance_id: str = ""):
+    def should_be_active(self, process_instance_id: str = "") -> None:
         """Asserts that the process instance is currently active. Defaults to the current instance."""
         assert self.ctx.engine, "No engine"
         instance_id = self.ctx._resolve_instance_id(process_instance_id)
@@ -49,7 +52,7 @@ class ProcessAssertions:
 
     @keyword
     @except_interop_exception
-    def should_be_suspended(self, process_instance_id: str = ""):
+    def should_be_suspended(self, process_instance_id: str = "") -> None:
         """Asserts that the process instance is suspended. Defaults to the current instance."""
         assert self.ctx.engine, "No engine"
         instance_id = self.ctx._resolve_instance_id(process_instance_id)
@@ -68,7 +71,7 @@ class ProcessAssertions:
 
     @keyword
     @except_interop_exception
-    def suspend_instance(self, process_instance_id: str = ""):
+    def suspend_instance(self, process_instance_id: str = "") -> None:
         """Suspends a running process instance. Defaults to the current instance."""
         assert self.ctx.engine, "No engine"
         instance_id = self.ctx._resolve_instance_id(process_instance_id)
@@ -77,7 +80,7 @@ class ProcessAssertions:
 
     @keyword
     @except_interop_exception
-    def activate_instance(self, process_instance_id: str = ""):
+    def activate_instance(self, process_instance_id: str = "") -> None:
         """Activates a suspended process instance. Defaults to the current instance."""
         assert self.ctx.engine, "No engine"
         instance_id = self.ctx._resolve_instance_id(process_instance_id)
@@ -92,7 +95,7 @@ class ProcessAssertions:
         name: str = "",
         times: int = 1,
         process_instance_id: str = "",
-    ):
+    ) -> None:
         """Asserts that the process instance has exactly *times* currently active (unfinished) activity instances.
 
         Filter by *activity_id* (BPMN element ID) or *name* (human-readable element name).
@@ -126,7 +129,7 @@ class ProcessAssertions:
         name: str = "",
         times: int = 1,
         process_instance_id: str = "",
-    ):
+    ) -> None:
         """Asserts that the process instance has exactly *times* completed activity instances.
 
         Filter by *activity_id* (BPMN element ID) or *name* (human-readable element name).

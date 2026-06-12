@@ -2,28 +2,22 @@ import json
 
 from robot.api import logger
 from robot.api.deco import keyword
-from typing import Any
+from typing import TYPE_CHECKING
 
-from keywords.base import except_interop_exception
+from keywords.base import java, except_interop_exception
 
-try:
-    import java  # pyright: ignore
-except ImportError:
 
-    class java:
-        @staticmethod
-        def type(klass: str) -> Any:
-            pass
+if TYPE_CHECKING:
+    from Operaton import Operaton
 
 
 class BpmnKeywords:
-
-    def __init__(self, ctx: Any):
+    def __init__(self, ctx: "Operaton") -> None:
         self.ctx = ctx
 
     @keyword
     @except_interop_exception
-    def log_bpmn_execution(self, process_instance_id: str = ""):
+    def log_bpmn_execution(self, process_instance_id: str = "") -> None:
         """Renders the executed BPMN path as SVG and logs it to the Robot log.
 
         Fetches BPMN XML and activity history from the engine, then delegates to

@@ -139,7 +139,7 @@ check:  ## mvn verify
 .PHONY: mypy
 mypy:  ## Run MyPy on Python sources
 	mypy --config-file mypy.ini python/src/Operaton
-	mypy --config-file mypy.ini --disable-error-code no-redef --disable-error-code var-annotated --disable-error-code assignment --disable-error-code union-attr src/main/resources/org.graalvm.python.vfs/src/Operaton.py src/main/resources/org.graalvm.python.vfs/src/keywords
+	mypy --config-file mypy.ini src/main/resources/org.graalvm.python.vfs/src/Operaton.py src/main/resources/org.graalvm.python.vfs/src/keywords
 
 ##@ Run  (SUITE=path/to/Suite.robot)
 
