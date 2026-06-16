@@ -12,8 +12,6 @@ variables:
 
 .devenv-job: &devenv-job
   image: ghcr.io/cachix/devenv/devenv:latest
-  tags:
-    - executor-podman
   before_script:
     - |
       run_devenv() {
