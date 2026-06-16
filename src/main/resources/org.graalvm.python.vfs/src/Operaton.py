@@ -4,6 +4,7 @@ from typing import Callable, Protocol, cast
 
 import os
 import uuid
+import json
 
 from robotlibcore import DynamicCore
 
@@ -40,6 +41,7 @@ assert_that_obj = getattr(
     None,
 )
 assertThat = cast(Callable[[InteropObject], _StartAssertion] | None, assert_that_obj)
+FlowNode = java.type("org.operaton.bpm.model.bpmn.instance.FlowNode")
 
 try:
     _SpinPlugin: InteropObject | None = java.type(
@@ -288,6 +290,87 @@ class Operaton(DynamicCore):
             f"for instance '{instance_id}' — use the definition key instead"
         )
         return str(by_name.get(0).getTaskDefinitionKey())
+
+    def _resolve_activity_id(self, process_definition_key: str, id_or_name: str) -> str:
+        """Return the BPMN flow-node id for *id_or_name* within *process_definition_key*.
+
+        If *id_or_name* already matches a deployed flow-node id, it is returned
+        unchanged. Otherwise it is treated as the BPMN element name and must
+        resolve to exactly one flow node in the latest deployed process definition.
+        """
+        if not id_or_name:
+            return ""
+        assert self.engine, "No engine"
+
+        repository = self.engine.getRepositoryService()
+        process_definition = (
+            repository.createProcessDefinitionQuery()
+            .processDefinitionKey(process_definition_key)
+            .latestVersion()
+            .singleResult()
+        )
+        assert (
+            process_definition is not None
+        ), f"No process definition with key '{process_definition_key}' is deployed"
+
+        model = repository.getBpmnModelInstance(str(process_definition.getId()))
+        assert (
+            model is not None
+        ), f"No BPMN model found for process '{process_definition_key}'"
+
+        flow_nodes = model.getModelElementsByType(FlowNode)
+        matches = []
+        for i in range(int(flow_nodes.size())):
+            flow_node = flow_nodes.get(i)
+            flow_node_id = str(flow_node.getId())
+            if flow_node_id == id_or_name:
+                return flow_node_id
+
+            name = flow_node.getName()
+            if name and str(name) == id_or_name:
+                matches.append(flow_node_id)
+
+        assert matches, (
+            f"No activity with id or name '{id_or_name}' found in process "
+            f"'{process_definition_key}'"
+        )
+        assert len(matches) == 1, (
+            f"Ambiguous activity name '{id_or_name}' in process "
+            f"'{process_definition_key}': matched ids {matches} - use the activity id instead"
+        )
+        return matches[0]
+
+    def _to_process_variable_value(self, value: object) -> object:
+        """
+        Turn values into engine-friendly process variable values.
+
+        String JSON values need to be wrapped as Spin JSON values to be
+        deserialized properly by the engine.
+        """
+        Spin = java.type("org.operaton.spin.Spin")
+
+        if isinstance(value, str):
+            stripped = value.strip()
+            # if the string looks like JSON, try to parse and wrap as Spin JSON
+            if (stripped.startswith("{") and stripped.endswith("}")) or (
+                stripped.startswith("[") and stripped.endswith("]")
+            ):
+                try:
+                    json.loads(stripped)
+                    return Spin.JSON(stripped)
+                except Exception:
+                    # preserve original string if it looks like JSON but isn't parseable
+                    return value
+
+        # serialize structured non-primitive values as JSON and wrap as Spin JSON
+        if not isinstance(value, (str, int, float, bool)) and value is not None:
+            try:
+                return Spin.JSON(json.dumps(value))
+            except Exception:
+                return value
+
+        # primitive values are returned unchanged
+        return value
 
     @keyword
     @except_interop_exception
@@ -566,12 +649,15 @@ class Operaton(DynamicCore):
         if variables:
             var_map = Variables.createVariables()
             for name, value in variables.items():
-                var_map.putValue(name, value)
+                var_map.putValue(name, self._to_process_variable_value(value))
             builder = builder.setVariables(var_map)
 
-        started = builder.startBeforeActivity(activity_id).execute()
+        resolved_activity_id = self._resolve_activity_id(
+            process_definition_key, activity_id
+        )
+        started = builder.startBeforeActivity(resolved_activity_id).execute()
         assert started is not None, (
-            f"Engine returned no instance for activity '{activity_id}' "
+            f"Engine returned no instance for activity '{resolved_activity_id}' "
             f"in process '{process_definition_key}'"
         )
         instance_id = str(started.getId())
