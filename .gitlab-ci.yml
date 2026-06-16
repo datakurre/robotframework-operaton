@@ -210,7 +210,7 @@ publish-release:
       }
       EOF
     - >
-      curl --silent --show-error --fail
+      run_devenv curl --silent --show-error --fail
       --header "JOB-TOKEN: $CI_JOB_TOKEN"
       --header "Content-Type: application/json"
       --data @release.json
