@@ -290,7 +290,7 @@ class Operaton(DynamicCore):
             f"for instance '{instance_id}' — use the definition key instead"
         )
         return str(by_name.get(0).getTaskDefinitionKey())
-    
+
     def _resolve_activity_id(self, process_definition_key: str, id_or_name: str) -> str:
         """Return the BPMN flow-node id for *id_or_name* within *process_definition_key*.
 
@@ -309,14 +309,14 @@ class Operaton(DynamicCore):
             .latestVersion()
             .singleResult()
         )
-        assert process_definition is not None, (
-            f"No process definition with key '{process_definition_key}' is deployed"
-        )
+        assert (
+            process_definition is not None
+        ), f"No process definition with key '{process_definition_key}' is deployed"
 
         model = repository.getBpmnModelInstance(str(process_definition.getId()))
-        assert model is not None, (
-            f"No BPMN model found for process '{process_definition_key}'"
-        )
+        assert (
+            model is not None
+        ), f"No BPMN model found for process '{process_definition_key}'"
 
         flow_nodes = model.getModelElementsByType(FlowNode)
         matches = []
@@ -344,7 +344,7 @@ class Operaton(DynamicCore):
         """
         Turn values into engine-friendly process variable values.
 
-        String JSON values need to be wrapped as Spin JSON values to be 
+        String JSON values need to be wrapped as Spin JSON values to be
         deserialized properly by the engine.
         """
         Spin = java.type("org.operaton.spin.Spin")
@@ -352,9 +352,8 @@ class Operaton(DynamicCore):
         if isinstance(value, str):
             stripped = value.strip()
             # if the string looks like JSON, try to parse and wrap as Spin JSON
-            if (
-                (stripped.startswith("{") and stripped.endswith("}")) or
-                (stripped.startswith("[") and stripped.endswith("]"))
+            if (stripped.startswith("{") and stripped.endswith("}")) or (
+                stripped.startswith("[") and stripped.endswith("]")
             ):
                 try:
                     json.loads(stripped)
@@ -653,7 +652,9 @@ class Operaton(DynamicCore):
                 var_map.putValue(name, self._to_process_variable_value(value))
             builder = builder.setVariables(var_map)
 
-        resolved_activity_id = self._resolve_activity_id(process_definition_key, activity_id)
+        resolved_activity_id = self._resolve_activity_id(
+            process_definition_key, activity_id
+        )
         started = builder.startBeforeActivity(resolved_activity_id).execute()
         assert started is not None, (
             f"Engine returned no instance for activity '{resolved_activity_id}' "
