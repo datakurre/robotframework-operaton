@@ -136,22 +136,22 @@ build-release:
     - VASARA_JAR="target/operaton-bpm-extension-robot-${VERSION}-vasara.jar"
     - WHEEL=$(ls python/dist/*.whl | head -1)
     - >
-      curl --silent --show-error --fail
+      run_devenv curl --silent --show-error --fail
       --header "JOB-TOKEN: $CI_JOB_TOKEN"
       --upload-file "$FAT_JAR"
       "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/operaton-robot/${VERSION}/operaton-bpm-extension-robot-${VERSION}-fat.jar"
     - >
-      curl --silent --show-error --fail
+      run_devenv curl --silent --show-error --fail
       --header "JOB-TOKEN: $CI_JOB_TOKEN"
       --upload-file "$VASARA_JAR"
       "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/operaton-robot/${VERSION}/operaton-bpm-extension-robot-${VERSION}-vasara.jar"
     - >
-      curl --silent --show-error --fail
+      run_devenv curl --silent --show-error --fail
       --header "JOB-TOKEN: $CI_JOB_TOKEN"
       --upload-file "docs/Operaton.libspec"
       "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/operaton-robot/${VERSION}/Operaton.libspec"
     - >
-      curl --silent --show-error --fail
+      run_devenv curl --silent --show-error --fail
       --header "JOB-TOKEN: $CI_JOB_TOKEN"
       --upload-file "$WHEEL"
       "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/operaton-robot/${VERSION}/$(basename $WHEEL)"
