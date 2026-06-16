@@ -49,6 +49,7 @@ let
       '';
 
       packages = [
+        pkgs.curl
         pkgs.gnumake
         pkgs.maven
         pkgs.mypy
