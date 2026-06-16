@@ -43,6 +43,7 @@ let
       languages.python.enable = true;
       languages.python.venv.enable = true;
       languages.python.venv.requirements = ''
+        build
         robotcode
         -e ./python
       '';
