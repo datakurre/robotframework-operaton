@@ -108,6 +108,7 @@ coverage-lib: coverage-submodule  ## Build & install the coverage submodule into
 
 .PHONY: coverage-submodule
 coverage-submodule:
+	@git config --global --add safe.directory "$$(pwd)" 2>/dev/null || true
 	@git submodule sync -- "$(COVERAGE_SUBMODULE)"
 	@git submodule update --init --recursive "$(COVERAGE_SUBMODULE)"
 
