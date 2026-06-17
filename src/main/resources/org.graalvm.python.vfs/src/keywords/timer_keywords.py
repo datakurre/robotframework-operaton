@@ -12,6 +12,16 @@ class TimerKeywords:
     def __init__(self, ctx: "Operaton") -> None:
         self.ctx = ctx
 
+    def _has_external_task(self, topic: str, process_instance_id: str = "") -> bool:
+        """Check if an external task exists for the given topic without locking it."""
+        assert self.ctx.engine, "No engine"
+        external_task_service = self.ctx.engine.getExternalTaskService()
+        query = external_task_service.createExternalTaskQuery().topicName(topic)
+        effective_id = process_instance_id or self.ctx._current_instance_id
+        if effective_id:
+            query = query.processInstanceId(effective_id)
+        return int(query.count()) > 0
+
     @keyword
     @except_interop_exception
     def set_clock(
@@ -85,13 +95,15 @@ class TimerKeywords:
 
     @keyword
     @except_interop_exception
-    def execute_jobs(self, process_instance_id: str = "") -> int:
+    def execute_jobs(self, process_instance_id: str = "", max_jobs: int = 0) -> int:
         """Executes all pending jobs (async continuations, messages, timers) for the instance.
 
          Useful for advancing past async intermediate events
         (e.g. a mail-send throw event with asyncBefore=true).
 
         Returns the number of jobs executed.
+        Set ``max_jobs`` to execute only the first N jobs from the pending batch.
+        ``max_jobs=0`` (default) means no limit.
 
         Example usage in Robot::
 
@@ -106,10 +118,57 @@ class TimerKeywords:
             query = query.processInstanceId(effective_id)
         jobs = query.list()
         count = int(jobs.size())
-        for i in range(count):
+        limit = count if int(max_jobs) <= 0 else min(count, int(max_jobs))
+        for i in range(limit):
             job = jobs.get(i)
             management.executeJob(str(job.getId()))
-        return count
+        return limit
+
+    @keyword
+    @except_interop_exception
+    def execute_jobs_until_external_task(
+        self,
+        topic: str,
+        process_instance_id: str = "",
+        max_rounds: int = 20,
+    ) -> int:
+        """Executes jobs one at a time until an external task for the given topic appears.
+
+        Useful for processes with chained async continuations that create new jobs during execution.
+        Refetches the pending job list after each execution, so newly created jobs are picked up.
+
+        Returns the total number of jobs executed.
+        Stops when an external task for the topic is found or ``max_rounds`` is reached.
+
+        Example usage in Robot::
+
+            Execute Jobs Until External Task    mail-send
+            Execute Jobs Until External Task    mvre.rcvideo.transcription.create    max_rounds=5
+        """
+        assert self.ctx.engine, "No engine"
+        effective_id = process_instance_id or self.ctx._current_instance_id
+        assert (
+            effective_id
+        ), "No process instance id provided and no current instance in scope"
+
+        total = 0
+        for _ in range(max_rounds):
+            # Check if external task already exists
+            if self._has_external_task(topic, effective_id):
+                break
+            # Fetch fresh pending jobs
+            management = self.ctx.engine.getManagementService()
+            query = (
+                management.createJobQuery().executable().processInstanceId(effective_id)
+            )
+            jobs = query.listPage(0, 1)
+            if int(jobs.size()) == 0:
+                # No more jobs and no external task yet
+                break
+            job = jobs.get(0)
+            management.executeJob(str(job.getId()))
+            total += 1
+        return total
 
     @keyword
     @except_interop_exception
@@ -118,6 +177,8 @@ class TimerKeywords:
         topic: str,
         process_instance_id: str = "",
         worker_id: str = "robot-worker",
+        execute_jobs_before: bool = True,
+        execute_jobs_after: bool = True,
         **variables: VariableValue,
     ) -> int:
         """Completes one external task for the given topic and executes pending jobs before and after."""
@@ -129,7 +190,8 @@ class TimerKeywords:
         ), "No process instance id provided and no current instance in scope"
 
         # Complete async-before jobs etc.
-        self.execute_jobs(instance_id)
+        if execute_jobs_before:
+            self.execute_jobs(instance_id)
 
         external_task_service = self.ctx.engine.getExternalTaskService()
         fetch_and_lock = external_task_service.fetchAndLock(1, worker_id).topic(
@@ -158,4 +220,5 @@ class TimerKeywords:
             external_task_service.complete(matching_task.getId(), worker_id)
 
         # Complete async-after jobs etc.
-        return self.execute_jobs(instance_id)
+        if execute_jobs_after:
+            return self.execute_jobs(instance_id)
