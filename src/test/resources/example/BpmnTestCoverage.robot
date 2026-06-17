@@ -25,13 +25,22 @@ Log Bpmn Test Coverage After Partial Execution
     Log Bpmn Test Coverage    multi-task-process
     [Teardown]    Teardown Process Engine
 
-Log Bpmn Test Coverage Table Only Without Definition
-    [Documentation]    Omitting the definition logs just the coverage table for all
-    ...    exercised definitions.
+Log Bpmn Test Coverage Renders All Definitions Without Arguments
+    [Documentation]    Omitting the definitions renders the coverage table AND
+    ...    SVG for every exercised definition (equivalent to listing all keys).
     [Setup]    Setup Process Engine
     Deploy Resources    ${CURDIR}${/}multi-task-process.bpmn
     Start Instance    multi-task-process
     Log Bpmn Test Coverage
+    [Teardown]    Teardown Process Engine
+
+Log Bpmn Test Coverage With Console Markdown Table
+    [Documentation]    The console=True flag writes a Markdown table to the Robot
+    ...    console in addition to the HTML log table.
+    [Setup]    Setup Process Engine
+    Deploy Resources    ${CURDIR}${/}multi-task-process.bpmn
+    Start Instance    multi-task-process
+    Log Bpmn Test Coverage    console=True
     [Teardown]    Teardown Process Engine
 
 Log Bpmn Test Coverage For Multiple Definitions

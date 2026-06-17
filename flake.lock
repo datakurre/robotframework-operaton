@@ -1,5 +1,21 @@
 {
   "nodes": {
+    "coverage-lib": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1781681319,
+        "narHash": "sha256-AgEFGd03Btz9wb85c7bS8dJu0R0txvcVXNAXmIXWqLs=",
+        "owner": "vasara-bpm",
+        "repo": "operaton-process-test-coverage",
+        "rev": "3908f7bbd42d0d9c131a05e75be3eec568a891c8",
+        "type": "gitlab"
+      },
+      "original": {
+        "owner": "vasara-bpm",
+        "repo": "operaton-process-test-coverage",
+        "type": "gitlab"
+      }
+    },
     "mvn2nix": {
       "inputs": {
         "nixpkgs": [
@@ -39,6 +55,7 @@
     },
     "root": {
       "inputs": {
+        "coverage-lib": "coverage-lib",
         "mvn2nix": "mvn2nix",
         "nixpkgs": "nixpkgs"
       }

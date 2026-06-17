@@ -103,23 +103,33 @@ class BpmnKeywords:
 
     @keyword
     @except_interop_exception
-    def log_bpmn_test_coverage(self, *definitions: str) -> None:
+    def log_bpmn_test_coverage(self, *definitions: str, console: bool = False) -> None:
         """Logs process test coverage to the Robot log.
 
-        Prints a table of every process definition exercised since
-        ``Setup Process Engine`` together with its coverage percentage, and —
-        when *definitions* are given — renders the covered paths of those
-        definitions as highlighted SVGs.
+        Prints an HTML table of every process definition exercised since
+        ``Setup Process Engine`` together with its coverage percentage, and
+        renders the covered paths of the requested definitions as highlighted SVGs.
+
+        When no *definitions* are given, SVGs are rendered for **all** exercised
+        definitions (same as listing them all explicitly).  Pass one or more
+        definition keys to render only a subset.
+
+        Use ``console=True`` to also print the table to the Robot console as a
+        Markdown table (useful for quick terminal inspection).
 
         Coverage is collected by the ``operaton-process-test-coverage`` library,
         which must be on the classpath (it is bundled in both fat JARs). If the
         library is unavailable, the keyword logs a warning and returns without
         failing.
 
-        Each item in *definitions* is a process definition key (e.g.
-        ``multi-task-process``).
         Rendering the SVG additionally requires Node.js 18+ on PATH; if ``node``
         is unavailable the coverage table is still logged.
+
+        Examples:
+        | Log Bpmn Test Coverage |                          | # all definitions |
+        | Log Bpmn Test Coverage | my-process               | # one definition  |
+        | Log Bpmn Test Coverage | proc-a    | proc-b       | # two definitions |
+        | Log Bpmn Test Coverage | console=True             | # Markdown table  |
         """
         assert self.ctx.engine, "No engine"
         collector = getattr(self.ctx, "coverage_collector", None)
@@ -146,7 +156,7 @@ class BpmnKeywords:
             # calculateCoverage returns NaN when a model has no elements
             return f"{pct:.1f}%" if pct == pct else "n/a"
 
-        # Plain-text table (console / non-HTML logs)
+        # Plain-text table written to the Robot log
         text_lines = [
             "Process test coverage:",
             f"{'Definition':<40} {'Covered':>8} {'Total':>6} {'Coverage':>9}",
@@ -171,13 +181,26 @@ class BpmnKeywords:
             f"<tbody>{html_rows}</tbody></table>"
         )
 
-        # Support multiple requested definitions while preserving order.
-        requested_definitions = []
-        seen = set()
-        for definition in definitions:
-            if definition and definition not in seen:
-                seen.add(definition)
-                requested_definitions.append(definition)
+        # Markdown table to the Robot console when requested
+        if console:
+            md_lines = [
+                "| Definition | Covered | Total | Coverage |",
+                "|---|---:|---:|---:|",
+            ]
+            for key, covered, total, pct in table_rows:
+                md_lines.append(f"| {key} | {covered} | {total} | {_pct_str(pct)} |")
+            print("*CONSOLE*\n" + "\n".join(md_lines))
+
+        # When no definitions are requested, render all exercised models.
+        if definitions:
+            requested_definitions = []
+            seen: set[str] = set()
+            for definition in definitions:
+                if definition and definition not in seen:
+                    seen.add(definition)
+                    requested_definitions.append(definition)
+        else:
+            requested_definitions = [str(m.getKey()) for m in models]
 
         if not requested_definitions:
             return
