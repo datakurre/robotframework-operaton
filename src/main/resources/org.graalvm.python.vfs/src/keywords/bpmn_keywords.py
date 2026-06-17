@@ -183,12 +183,19 @@ class BpmnKeywords:
 
         # Markdown table to the Robot console when requested
         if console:
+            pct_strs = [_pct_str(pct) for _, _, _, pct in table_rows]
+            w_key = max(len("Definition"), *(len(k) for k, *_ in table_rows), 0)
+            w_cov = max(len("Covered"), *(len(str(c)) for _, c, *_ in table_rows), 0)
+            w_tot = max(len("Total"), *(len(str(t)) for _, _, t, _ in table_rows), 0)
+            w_pct = max(len("Coverage"), *(len(p) for p in pct_strs), 0)
             md_lines = [
-                "| Definition | Covered | Total | Coverage |",
-                "|---|---:|---:|---:|",
+                f"| {'Definition':<{w_key}} | {'Covered':>{w_cov}} | {'Total':>{w_tot}} | {'Coverage':>{w_pct}} |",
+                f"| {'-' * w_key} | {'-' * (w_cov - 1)}: | {'-' * (w_tot - 1)}: | {'-' * (w_pct - 1)}: |",
             ]
-            for key, covered, total, pct in table_rows:
-                md_lines.append(f"| {key} | {covered} | {total} | {_pct_str(pct)} |")
+            for (key, covered, total, _), pct_str in zip(table_rows, pct_strs):
+                md_lines.append(
+                    f"| {key:<{w_key}} | {covered:>{w_cov}} | {total:>{w_tot}} | {pct_str:>{w_pct}} |"
+                )
             print("*CONSOLE*\n" + "\n".join(md_lines))
 
         # When no definitions are requested, render all exercised models.
