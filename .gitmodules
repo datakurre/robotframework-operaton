@@ -1,0 +1,3 @@
+[submodule "third_party/operaton-process-test-coverage"]
+	path = third_party/operaton-process-test-coverage
+	url = https://gitlab.com/vasara-bpm/operaton-process-test-coverage.git

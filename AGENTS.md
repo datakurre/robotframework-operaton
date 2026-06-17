@@ -62,6 +62,7 @@ Tests are driven by JUnit 5: each `*Test.java` calls `RobotCliTest.runRobot(...)
 | [robot.toml](robot.toml)                                                                                                             | RobotCode configuration for VS Code keyword discovery and test execution.                                                                   |
 | [devenv.nix](devenv.nix)                                                                                                             | JDK 21, Maven, formatters.                                                                                                                  |
 | [Makefile](Makefile)                                                                                                                 | Standard targets — see table below.                                                                                                         |
+| `third_party/operaton-process-test-coverage/`                                                                                        | **Git submodule** — the process test coverage library. Built/installed to local m2 by `make coverage-lib`. Do not edit.                     |
 | `tmp/`                                                                                                                               | **Reference checkout — do not modify.** Originally the source the library was ported from.                                                  |
 
 ## Development setup
@@ -126,33 +127,37 @@ devenv shell --no-eval-cache -- make run SUITE="--loglevel DEBUG src/test/resour
 
 ### Makefile target reference
 
-| Target          | Description                                                                       |
-| --------------- | --------------------------------------------------------------------------------- |
-| `build`         | Thin JAR: `mvn package -DskipTests` (dev/test classpath only)                     |
-| `dist-fat`      | **Standard fat JAR** (default deliverable): `-Pshade package -DskipTests`         |
-| `dist-vasara`   | Vasara fat JAR (includes `fi.jyu.vasara.*`): `-Pshade-vasara package -DskipTests` |
-| `dist-native`   | Native binary (GraalVM native-image; slow): `-Pnative package`                    |
-| `dist-wheel`    | CPython proxy wheel under `python/dist/`                                          |
-| `dist-docs`     | Generate `docs/Operaton.html` keyword reference                                   |
-| `dist-libspec`  | Generate `docs/Operaton.libspec` for RobotCode LSP                                |
-| `clean`         | `mvn clean`                                                                       |
-| `test`          | All JUnit + Robot suites (Nix-aware: uses `-Pnix` in devenv)                      |
-| `check`         | `mvn verify` (test + integration checks)                                          |
-| `mypy`          | Run `mypy` on Python sources                                                      |
-| `run`           | Run a suite via fat JAR (`SUITE=path/to/Suite.robot`)                             |
-| `run-vasara`    | Run a suite via Vasara JAR                                                        |
-| `run-native`    | Run a suite via native binary                                                     |
-| `robot`         | Run a suite via Maven classpath runner (no pre-built JAR needed)                  |
-| `watch`         | Fat JAR in-process watcher, re-run on any change (~1 s) — fastest loop            |
-| `watch-vasara`  | Vasara JAR in-process watcher                                                     |
-| `watch-dev`     | Maven runner watcher, rebuilds VFS on `.py` changes                               |
-| `watch-native`  | Native binary watcher (`.py` changes require `dist-native` manually)              |
-| `remote`        | Long-running Remote server on `:8270` via fat JAR                                 |
-| `remote-vasara` | Long-running Remote server via Vasara JAR                                         |
-| `remote-dev`    | Long-running Remote server via Maven classpath                                    |
-| `format`        | Format sources with `treefmt`                                                     |
-| `format-check`  | Verify formatting with `treefmt --ci`                                             |
-| `install-proxy` | `pip install -e python/` (editable install)                                       |
+| Target                                | Description                                                                                   |
+| ------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `coverage-lib`                        | Build & install the `third_party/` coverage submodule to local m2 (prereq of build/test/dist) |
+| `build`                               | Thin JAR: `mvn package -DskipTests` (dev/test classpath only)                                 |
+| `dist-fat`                            | **Standard fat JAR** (default deliverable): `-Pshade package -DskipTests`                     |
+| `dist-vasara`                         | Vasara fat JAR (includes `fi.jyu.vasara.*`): `-Pshade-vasara package -DskipTests`             |
+| `dist-native`                         | Native binary (GraalVM native-image; slow): `-Pnative package`                                |
+| `dist-wheel`                          | CPython proxy wheel under `python/dist/`                                                      |
+| `dist-docs`                           | Generate `docs/Operaton.html` keyword reference                                               |
+| `dist-libspec`                        | Generate `docs/Operaton.libspec` for RobotCode LSP                                            |
+| `clean`                               | `mvn clean`                                                                                   |
+| `test`                                | All JUnit + Robot suites (Nix-aware: uses `-Pnix` in devenv)                                  |
+| `check`                               | `mvn verify` (test + integration checks)                                                      |
+| `mypy`                                | Run `mypy` on Python sources                                                                  |
+| `run`                                 | Run a suite via fat JAR (`SUITE=path/to/Suite.robot`)                                         |
+| `run-vasara`                          | Run a suite via Vasara JAR                                                                    |
+| `run-native`                          | Run a suite via native binary                                                                 |
+| `robot`                               | Run a suite via Maven classpath runner (no pre-built JAR needed)                              |
+| `watch`                               | Fat JAR in-process watcher, re-run on any change (~1 s) — fastest loop                        |
+| `watch-vasara`                        | Vasara JAR in-process watcher                                                                 |
+| `watch-dev`                           | Maven runner watcher, rebuilds VFS on `.py` changes                                           |
+| `watch-native`                        | Native binary watcher (`.py` changes require `dist-native` manually)                          |
+| `remote`                              | Long-running Remote server on `:8270` via fat JAR                                             |
+| `remote-vasara`                       | Long-running Remote server via Vasara JAR                                                     |
+| `remote-dev`                          | Long-running Remote server via Maven classpath                                                |
+| `mvn2nix.lock`                        | Generate mvn2nix lock for main project (limited by SNAPSHOT deps not in Maven Central)        |
+| `operaton-process-test-coverage.lock` | Generate mvn2nix lock for coverage library submodule                                          |
+| `mvn2nix-locks`                       | Generate both mvn2nix lock files                                                              |
+| `format`                              | Format sources with `treefmt`                                                                 |
+| `format-check`                        | Verify formatting with `treefmt --ci`                                                         |
+| `install-proxy`                       | `pip install -e python/` (editable install)                                                   |
 
 ## Conventions
 
@@ -199,10 +204,56 @@ devenv shell --no-eval-cache -- make run SUITE="--loglevel DEBUG src/test/resour
 
 For instructions on upgrading any of the above, see [UPGRADE.md](UPGRADE.md).
 
+## Nix and mvn2nix (SNAPSHOT dependencies)
+
+The project has a SNAPSHOT dependency on `operaton-process-test-coverage` (3.0.2-SNAPSHOT), which is vendored as a git submodule and not published to Maven Central. This presents a challenge for both mvn2nix lock generation and Nix builds.
+
+**Current solution:**
+
+1. **Development builds (make targets):** Always work because they use the local Maven repo.
+
+   ```bash
+   make coverage-lib  # Pre-build coverage library to ~/.m2/repository
+   make test          # All tests pass; coverage is bundled in JARs
+   ```
+
+2. **Coverage library lock file** (`operaton-process-test-coverage.lock`): Generated separately via:
+
+   ```bash
+   make operaton-process-test-coverage.lock
+   ```
+
+   This runs mvn2nix on the coverage submodule with selective modules (`bom`, `extension/core`, `extension/engine-platform-7`), skipping problematic modules (examples, plugins).
+
+3. **Main project lock file** (`mvn2nix.lock`): Cannot be generated because the main project depends on the coverage library (SNAPSHOT, not on Maven Central). The project doesn't use mvn2nix.lock in Nix builds; instead, it uses a fixed-output derivation (`mavenRepository`) with network access.
+
+4. **Nix builds** (`nix build .` and `nix run .`): **Currently cannot find the coverage library** because:
+   - The Nix sandbox is isolated from the local `~/.m2/repository`
+   - The coverage library is a SNAPSHOT artifact not on Maven Central
+   - Git submodules are not automatically included in Nix flake builds
+
+   **Workaround for now:** Use development builds instead:
+
+   ```bash
+   # Pre-build all dependencies locally
+   devenv shell --no-eval-cache -- make coverage-lib test
+
+   # Then run via Makefile targets, not via Nix
+   make run SUITE=src/test/resources/example/BpmnTestCoverage.robot
+   make fat-jar  # produces standard fat JAR
+   ```
+
+**Future fix:** To enable `nix run .` with the coverage library, we need either:
+
+- Publish the coverage library to a public Maven repo (then mvn2nix can fetch it)
+- Configure Nix flakes to include git submodules and build them in the sandbox
+- Create a separate Nix package for the coverage library as a pre-built artifact
+
 ## Things to avoid
 
 - Do **not** add a `<parent>` to `pom.xml` — this project is intentionally standalone.
 - Do **not** touch anything under `tmp/`; it is a reference checkout the user keeps temporarily.
+- Do **not** edit `third_party/operaton-process-test-coverage/`; it is a git submodule. Run `make coverage-lib` to (re)build and install it into the local Maven repo.
 - Do **not** restore the deleted top-level `lib/` or `example/` directories — those locations are replaced by the standard Maven paths under `src/`.
 - Do **not** use `run_cli()` in test code (it calls `sys.exit()`); use `run(...)` like `RobotCliTest` does.
 - Do **not** generate Robot XML output/log/report during JUnit runs — `pyexpat` interactions across GraalPy contexts are fragile. Pass `output="NONE", log="NONE", report="NONE"`.

@@ -9,6 +9,14 @@ BPMN_RENDER_JS := src/main/resources/bpmn-render.js
 DMN_RENDER_JS := src/main/resources/dmn-render.js
 JS_SOURCES := src/main/js/src/render.mjs src/main/js/package.json
 
+# ─── Coverage submodule ──────────────────────────────────────────────────────
+# The operaton-process-test-coverage library is vendored as a git submodule and
+# built/installed into the local Maven repo (it is not published to Maven Central).
+COVERAGE_SUBMODULE := third_party/operaton-process-test-coverage
+COVERAGE_VERSION := 3.0.2-SNAPSHOT
+COVERAGE_MARKER := $(HOME)/.m2/repository/org/operaton/community/process_test_coverage/operaton-process-test-coverage-engine-platform-7/$(COVERAGE_VERSION)/operaton-process-test-coverage-engine-platform-7-$(COVERAGE_VERSION).jar
+COVERAGE_STATE_FILE := target/.coverage-lib-submodule-head
+
 .PHONY: all
 all: help
 
@@ -43,19 +51,19 @@ define _run_maven_with_graalpy_retry
 endef
 
 .PHONY: build
-build: _fix-graalpy-sysconfig  ## Thin JAR (dev/test classpath; not distributable)
+build: _fix-graalpy-sysconfig coverage-lib  ## Thin JAR (dev/test classpath; not distributable)
 	$(call _run_maven_with_graalpy_retry,mvn package -DskipTests,build)
 
 .PHONY: dist-fat
-dist-fat: _fix-graalpy-sysconfig  ## Standard fat JAR [primary deliverable]
+dist-fat: _fix-graalpy-sysconfig coverage-lib  ## Standard fat JAR [primary deliverable]
 	$(call _run_maven_with_graalpy_retry,mvn -Pshade package -DskipTests,dist-fat)
 
 .PHONY: dist-vasara
-dist-vasara: _fix-graalpy-sysconfig  ## Vasara fat JAR (includes fi.jyu.vasara.* form classes)
+dist-vasara: _fix-graalpy-sysconfig coverage-lib  ## Vasara fat JAR (includes fi.jyu.vasara.* form classes)
 	$(call _run_maven_with_graalpy_retry,mvn -Pshade-vasara package -DskipTests,dist-vasara)
 
 .PHONY: dist-native
-dist-native:  ## Native binary via GraalVM native-image (slow)
+dist-native: coverage-lib  ## Native binary via GraalVM native-image (slow)
 	mvn -Pnative package
 
 .PHONY: dist-wheel
@@ -65,13 +73,13 @@ dist-wheel:  ## CPython proxy wheel → python/dist/
 DOCS_DIR ?= docs
 
 .PHONY: dist-docs
-dist-docs:  ## Keyword HTML reference → $(DOCS_DIR)/Operaton.html  [DOCS_DIR=docs]
+dist-docs: coverage-lib  ## Keyword HTML reference → $(DOCS_DIR)/Operaton.html  [DOCS_DIR=docs]
 	mkdir -p $(DOCS_DIR)
 	$(call _run_maven_with_graalpy_retry,mvn -q -DskipTests package,dist-docs)
 	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Libdoc $(DOCS_DIR)/Operaton.html"
 
 .PHONY: dist-libspec
-dist-libspec:  ## Keyword spec for RobotCode LSP → $(DOCS_DIR)/Operaton.libspec  [DOCS_DIR=docs]
+dist-libspec: coverage-lib  ## Keyword spec for RobotCode LSP → $(DOCS_DIR)/Operaton.libspec  [DOCS_DIR=docs]
 	mkdir -p $(DOCS_DIR)
 	$(call _run_maven_with_graalpy_retry,mvn -q -DskipTests package,dist-libspec)
 	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Libdoc $(DOCS_DIR)/Operaton.libspec"
@@ -79,6 +87,30 @@ dist-libspec:  ## Keyword spec for RobotCode LSP → $(DOCS_DIR)/Operaton.libspe
 .PHONY: clean
 clean:  ## mvn clean
 	mvn clean
+
+# ─── Coverage library (git submodule) ────────────────────────────────────────
+# Builds operaton-process-test-coverage-core and -engine-platform-7 from the
+# submodule and installs them into the local Maven repo. Other targets depend on
+# this so the coverage keywords compile and bundle correctly.
+
+.PHONY: coverage-lib
+coverage-lib: coverage-submodule  ## Build & install the coverage submodule into the local Maven repo
+	@HEAD=$$(git -C "$(COVERAGE_SUBMODULE)" rev-parse HEAD); \
+	INSTALLED_HEAD=$$(cat "$(COVERAGE_STATE_FILE)" 2>/dev/null || true); \
+	if [ ! -f "$(COVERAGE_MARKER)" ] || [ "$$HEAD" != "$$INSTALLED_HEAD" ]; then \
+	  echo "Installing coverage library for submodule commit $$HEAD ..."; \
+	  (cd "$(COVERAGE_SUBMODULE)" && ./mvnw -q -pl bom,extension/core,extension/engine-platform-7 -am install -Dmaven.test.skip=true -B); \
+	  mkdir -p "$$(dirname "$(COVERAGE_STATE_FILE)")"; \
+	  printf '%s\n' "$$HEAD" > "$(COVERAGE_STATE_FILE)"; \
+	else \
+	  echo "Coverage library already up-to-date for submodule commit $$HEAD."; \
+	fi
+
+.PHONY: coverage-submodule
+coverage-submodule:
+	@git config --global --add safe.directory "$$(pwd)" 2>/dev/null || true
+	@git submodule sync -- "$(COVERAGE_SUBMODULE)"
+	@git submodule update --init --recursive "$(COVERAGE_SUBMODULE)"
 
 # ─── JS bundle ───────────────────────────────────────────────────────────────
 # Rebuild the bpmn-render.js bundle from source (requires node + npm on PATH).
@@ -125,15 +157,15 @@ _nix-venv-bootstrap:
 	done
 
 .PHONY: compile
-compile: _fix-graalpy-sysconfig  ## Compile Java + test sources (no tests executed)
+compile: _fix-graalpy-sysconfig coverage-lib  ## Compile Java + test sources (no tests executed)
 	$(call _run_maven_with_graalpy_retry,mvn -q -DskipTests test-compile,compile)
 
 .PHONY: test
-test: _fix-graalpy-sysconfig  ## Run all JUnit + Robot suites
+test: _fix-graalpy-sysconfig coverage-lib  ## Run all JUnit + Robot suites
 	$(call _run_maven_with_graalpy_retry,mvn test,test)
 
 .PHONY: check
-check:  ## mvn verify
+check: coverage-lib  ## mvn verify
 	mvn verify
 
 .PHONY: mypy
@@ -156,12 +188,12 @@ run-native:  ## Native binary runner
 	./$(NATIVE_BIN) $(SUITE)
 
 .PHONY: robot
-robot:  ## Maven classpath runner (no pre-built JAR needed)
+robot: coverage-lib  ## Maven classpath runner (no pre-built JAR needed)
 	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Robot ${SUITE}"
 
 OUTPUTDIR ?= robot-results
 .PHONY: ci-robot
-ci-robot:  ## Maven classpath runner with --outputdir for CI  [OUTPUTDIR=robot-results SUITE=path]
+ci-robot: coverage-lib  ## Maven classpath runner with --outputdir for CI  [OUTPUTDIR=robot-results SUITE=path]
 	mkdir -p $(OUTPUTDIR)
 	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Robot --outputdir $(OUTPUTDIR) $(SUITE)"
 
@@ -176,7 +208,7 @@ watch-vasara:  ## Vasara fat JAR watcher
 	$(JAVA) -jar $(JAR_VASARA) --watch $(or $(SUITE),src/test/resources/example)
 
 .PHONY: watch-dev
-watch-dev:  ## Maven classpath watcher; rebuilds VFS on .py changes
+watch-dev: coverage-lib  ## Maven classpath watcher; rebuilds VFS on .py changes
 	@echo "Watching: $(WATCH_PATHS)"
 	@echo "Suite filter: $(or $(SUITE),<all>)"
 	@echo "Press Ctrl+C to stop."
@@ -223,11 +255,20 @@ watch-native:  ## Native binary watcher (.py changes require dist-native)
 	  echo "─────────────────────────────────────────────"; \
 	done
 
-##@ Remote server  (XML-RPC on :8270)
+##@ Nix lockfiles (mvn2nix offline dependencies)
 
 .PHONY: mvn2nix.lock
-mvn2nix.lock:
-	nix run gitlab:vasara-bpm/mvn2nix -- pom.xml --goals=dependency:go-offline > mvn2nix.lock
+mvn2nix.lock:  ## Generate mvn2nix.lock for main project dependencies
+	nix run gitlab:vasara-bpm/mvn2nix -- pom.xml --goals=dependency:go-offline --repositories=file://$(HOME)/.m2/repository --repositories=https://repo.maven.apache.org/maven2/ > mvn2nix.lock
+
+.PHONY: operaton-process-test-coverage.lock
+operaton-process-test-coverage.lock: coverage-submodule  ## Generate mvn2nix lock for coverage library submodule
+	nix run gitlab:vasara-bpm/mvn2nix -- $(COVERAGE_SUBMODULE)/pom.xml --goals="dependency:go-offline -pl bom,extension/core,extension/engine-platform-7 -am" > operaton-process-test-coverage.lock
+
+.PHONY: mvn2nix-locks
+mvn2nix-locks: mvn2nix.lock operaton-process-test-coverage.lock  ## Generate both mvn2nix lock files (main + coverage)
+
+##@ Remote server  (XML-RPC on :8270)
 
 # ─── Remote server ───────────────────────────────────────────────────────────
 # Starts the Operaton keyword library as a Robot Framework Remote Server.
@@ -243,7 +284,7 @@ remote-vasara:  ## Vasara fat JAR
 	$(JAVA) -jar $(JAR_VASARA) --remote --port 8270 --port-file operaton-remote.port
 
 .PHONY: remote-dev
-remote-dev:  ## Maven classpath runner
+remote-dev: coverage-lib  ## Maven classpath runner
 	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Robot --remote --port 8270 --port-file operaton-remote.port"
 
 ##@ Misc
