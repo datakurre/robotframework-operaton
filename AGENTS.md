@@ -206,21 +206,48 @@ For instructions on upgrading any of the above, see [UPGRADE.md](UPGRADE.md).
 
 ## Nix and mvn2nix (SNAPSHOT dependencies)
 
-The project has a SNAPSHOT dependency on `operaton-process-test-coverage` (3.0.2-SNAPSHOT), which is vendored as a git submodule and not published to Maven Central. This presents a challenge for Nix offline builds that use `mvn2nix` to pre-fetch all dependencies.
+The project has a SNAPSHOT dependency on `operaton-process-test-coverage` (3.0.2-SNAPSHOT), which is vendored as a git submodule and not published to Maven Central. This presents a challenge for both mvn2nix lock generation and Nix builds.
 
 **Current solution:**
 
-1. **Coverage library lock file** (`operaton-process-test-coverage.lock`): Generated separately via:
+1. **Development builds (make targets):** Always work because they use the local Maven repo.
+
+   ```bash
+   make coverage-lib  # Pre-build coverage library to ~/.m2/repository
+   make test          # All tests pass; coverage is bundled in JARs
+   ```
+
+2. **Coverage library lock file** (`operaton-process-test-coverage.lock`): Generated separately via:
 
    ```bash
    make operaton-process-test-coverage.lock
    ```
 
-   This runs mvn2nix on the coverage submodule with selective modules (`bom`, `extension/core`, `extension/engine-platform-7`), skipping problematic modules (examples, plugins) that reference unbuilt SNAPSHOT artifacts.
+   This runs mvn2nix on the coverage submodule with selective modules (`bom`, `extension/core`, `extension/engine-platform-7`), skipping problematic modules (examples, plugins).
 
-2. **Main project lock file** (`mvn2nix.lock`): Cannot be generated in a fully offline manner because the main project depends on the coverage library (not on Maven Central). However, the main project does not currently use mvn2nix.lock in its Nix build — instead, it uses a fixed-output derivation (`mavenRepository`) that downloads all dependencies during the Nix build with network access.
+3. **Main project lock file** (`mvn2nix.lock`): Cannot be generated because the main project depends on the coverage library (SNAPSHOT, not on Maven Central). The project doesn't use mvn2nix.lock in Nix builds; instead, it uses a fixed-output derivation (`mavenRepository`) with network access.
 
-**For Nix builds:** The `make coverage-lib` target ensures the coverage library is built and installed to `~/.m2/repository` before any Maven build. The fixed-output derivation approach handles all other transitive dependencies automatically.
+4. **Nix builds** (`nix build .` and `nix run .`): **Currently cannot find the coverage library** because:
+   - The Nix sandbox is isolated from the local `~/.m2/repository`
+   - The coverage library is a SNAPSHOT artifact not on Maven Central
+   - Git submodules are not automatically included in Nix flake builds
+
+   **Workaround for now:** Use development builds instead:
+
+   ```bash
+   # Pre-build all dependencies locally
+   devenv shell --no-eval-cache -- make coverage-lib test
+
+   # Then run via Makefile targets, not via Nix
+   make run SUITE=src/test/resources/example/BpmnTestCoverage.robot
+   make fat-jar  # produces standard fat JAR
+   ```
+
+**Future fix:** To enable `nix run .` with the coverage library, we need either:
+
+- Publish the coverage library to a public Maven repo (then mvn2nix can fetch it)
+- Configure Nix flakes to include git submodules and build them in the sandbox
+- Create a separate Nix package for the coverage library as a pre-built artifact
 
 ## Things to avoid
 

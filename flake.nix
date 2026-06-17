@@ -3,12 +3,15 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
     mvn2nix.url = "gitlab:vasara-bpm/mvn2nix";
     mvn2nix.inputs.nixpkgs.follows = "nixpkgs";
+    coverage-lib.url = "gitlab:vasara-bpm/operaton-process-test-coverage";
+    coverage-lib.flake = false;
   };
   outputs =
     {
       self,
       nixpkgs,
       mvn2nix,
+      coverage-lib,
     }:
     let
       systems = [
@@ -26,7 +29,7 @@
             in
             final.callPackage ./default.jar.nix {
               maven = prev.maven.override { inherit jdk_headless; };
-              inherit jdk_headless;
+              inherit jdk_headless coverage-lib;
             };
           jre = prev.jdk21;
         };
@@ -37,7 +40,7 @@
             in
             final.callPackage ./default.jar.nix {
               maven = prev.maven.override { inherit jdk_headless; };
-              inherit jdk_headless;
+              inherit jdk_headless coverage-lib;
               profile = "shade-vasara";
               classifier = "vasara";
             };

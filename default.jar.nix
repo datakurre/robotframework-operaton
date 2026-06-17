@@ -3,6 +3,7 @@
   jdk_headless,
   maven,
   stdenv,
+  coverage-lib,
   profile ? "shade",
   classifier ? "fat",
 }:
@@ -69,6 +70,10 @@ let
   # FODs are allowed network access even when sandbox = true.
   # We ONLY resolve dependencies here -- no GraalPy execution, which avoids
   # all native-library issues (libtrufflenfi.so ELF interpreter, etc.).
+  # Note: The operaton-process-test-coverage library (SNAPSHOT, not on Maven Central)
+  # must be pre-built and installed to ~/.m2/repository before building in development.
+  # For Nix builds, we use a workaround: the mavenRepository FOD will fail to find coverage
+  # artifacts, but we can pre-populate the Maven repo cache by building locally first.
   mavenRepository = stdenv.mkDerivation {
     name = "operaton-bpm-extension-robot-maven-deps";
     src = filteredSrc;
@@ -77,12 +82,45 @@ let
       maven
     ];
     buildPhase = ''
-      # Run the full Maven build (with -Pnix skipping graalpy-maven-plugin)
+      echo "=== Nix build starting in $PWD ==="
+      echo "mavenRepository will be at: $out"
+
+      # First, build and install the coverage library from the Nix input
+      # so its SNAPSHOT artifacts are available in the local Maven repo.
+      if [ -d "${coverage-lib}" ]; then
+        echo ""
+        echo "=== Preparing coverage library from Nix input at ${coverage-lib} ==="
+        # Copy to a writable location (Nix inputs are read-only)
+        COVERAGE_BUILD=$(mktemp -d)
+        cp -r "${coverage-lib}" "$COVERAGE_BUILD/coverage"
+        chmod -R +w "$COVERAGE_BUILD/coverage"
+        
+        echo "=== Building coverage library ==="
+        (cd "$COVERAGE_BUILD/coverage" && \
+          mvn -q -pl bom,extension/core,extension/engine-platform-7 -am install \
+            -Dmaven.test.skip=true \
+            -Dmaven.repo.local=$out \
+            -B)
+        echo "=== Coverage library build completed ==="
+        echo "Checking what was installed..."
+        find $out -type f -name "*.jar" | grep -i coverage | head -10
+        rm -rf "$COVERAGE_BUILD"
+      else
+        echo "ERROR: coverage library input not available at ${coverage-lib}"
+        exit 1
+      fi
+
+      echo ""
+      # Then, run the full Maven build (with -Pnix skipping graalpy-maven-plugin)
       # so every artifact needed for an offline build is downloaded to $out.
       # The build output itself is discarded; only the local repo matters.
+      echo "=== Building main project ==="
       mvn -P${profile},nix package -Dmaven.repo.local=$out -DskipTests -q || true
+      echo "=== First Maven build completed ==="
       # A second pass picks up anything missed (e.g. shade plugin artifacts).
+      echo "=== Running second Maven pass ==="
       mvn -P${profile},nix package -Dmaven.repo.local=$out -DskipTests -q || true
+      echo "=== Build finished ==="
     '';
     installPhase = ''
       find $out -type f \
@@ -94,9 +132,8 @@ let
     dontFixup = true;
     outputHashAlgo = "sha256";
     outputHashMode = "recursive";
-    # Run nix build with the placeholder hash once; replace with the hash
-    # printed in the "got:" line of the resulting error.
-    outputHash = "sha256-P82qdVaOiBSDwDFU6BFCYKLyDYBOwv597afMNgVoxZ4=";
+    # Hash updated to include coverage library artifacts from the Nix input.
+    outputHash = "sha256-FaK1QS0b2uUzt67O92dmYi2ICmWwMlKz1nWo0YZjxSE=";
   };
 in
 stdenv.mkDerivation rec {
