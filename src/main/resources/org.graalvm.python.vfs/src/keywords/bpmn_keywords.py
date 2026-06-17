@@ -163,7 +163,22 @@ class BpmnKeywords:
         ]
         for key, covered, total, pct in table_rows:
             text_lines.append(f"{key:<40} {covered:>8} {total:>6} {_pct_str(pct):>9}")
+        grand_total_covered = sum(covered for _, covered, _, _ in table_rows)
+        grand_total_elements = sum(total for _, _, total, _ in table_rows)
+        grand_total_pct = (
+            float(grand_total_covered) / float(grand_total_elements) * 100.0
+            if grand_total_elements
+            else float("nan")
+        )
+        text_lines.append(
+            f"TOTAL BPMN TEST COVERAGE: {_pct_str(grand_total_pct)} "
+            f"({grand_total_covered}/{grand_total_elements})"
+        )
         logger.info("\n".join(text_lines))
+        print(
+            f"TOTAL BPMN TEST COVERAGE: {_pct_str(grand_total_pct)} "
+            f"({grand_total_covered}/{grand_total_elements})"
+        )
 
         # HTML table for the Robot log
         html_rows = "".join(
@@ -183,11 +198,34 @@ class BpmnKeywords:
 
         # Markdown table to the Robot console when requested
         if console:
+            grand_total_row = (
+                "Grand Total",
+                grand_total_covered,
+                grand_total_elements,
+                _pct_str(grand_total_pct),
+            )
             pct_strs = [_pct_str(pct) for _, _, _, pct in table_rows]
-            w_key = max(len("Definition"), *(len(k) for k, *_ in table_rows), 0)
-            w_cov = max(len("Covered"), *(len(str(c)) for _, c, *_ in table_rows), 0)
-            w_tot = max(len("Total"), *(len(str(t)) for _, _, t, _ in table_rows), 0)
-            w_pct = max(len("Coverage"), *(len(p) for p in pct_strs), 0)
+            w_key = max(
+                len("Definition"),
+                len(grand_total_row[0]),
+                *(len(k) for k, *_ in table_rows),
+                0,
+            )
+            w_cov = max(
+                len("Covered"),
+                len(str(grand_total_row[1])),
+                *(len(str(c)) for _, c, *_ in table_rows),
+                0,
+            )
+            w_tot = max(
+                len("Total"),
+                len(str(grand_total_row[2])),
+                *(len(str(t)) for _, _, t, _ in table_rows),
+                0,
+            )
+            w_pct = max(
+                len("Coverage"), len(grand_total_row[3]), *(len(p) for p in pct_strs), 0
+            )
             md_lines = [
                 f"| {'Definition':<{w_key}} | {'Covered':>{w_cov}} | {'Total':>{w_tot}} | {'Coverage':>{w_pct}} |",
                 f"| {'-' * w_key} | {'-' * (w_cov - 1)}: | {'-' * (w_tot - 1)}: | {'-' * (w_pct - 1)}: |",
@@ -196,6 +234,9 @@ class BpmnKeywords:
                 md_lines.append(
                     f"| {key:<{w_key}} | {covered:>{w_cov}} | {total:>{w_tot}} | {pct_str:>{w_pct}} |"
                 )
+            md_lines.append(
+                f"| {grand_total_row[0]:<{w_key}} | {grand_total_row[1]:>{w_cov}} | {grand_total_row[2]:>{w_tot}} | {grand_total_row[3]:>{w_pct}} |"
+            )
             print("*CONSOLE*\n" + "\n".join(md_lines))
 
         # When no definitions are requested, render all exercised models.
