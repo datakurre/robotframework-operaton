@@ -33,3 +33,16 @@ Log Bpmn Test Coverage Table Only Without Definition
     Start Instance    multi-task-process
     Log Bpmn Test Coverage
     [Teardown]    Teardown Process Engine
+
+Log Bpmn Test Coverage For Multiple Definitions
+    [Documentation]    Passes multiple process definition keys to log coverage
+    ...    for each requested model in one keyword call.
+    [Setup]    Setup Process Engine
+    Deploy Resources    ${CURDIR}${/}multi-task-process.bpmn    ${CURDIR}${/}process.bpmn
+    Start Instance    multi-task-process
+    Complete Task    task-a
+    Complete Task    task-b
+    Start Instance    my-project-process
+    Complete Task    say-hello
+    Log Bpmn Test Coverage    multi-task-process    my-project-process
+    [Teardown]    Teardown Process Engine

@@ -254,11 +254,20 @@ watch-native:  ## Native binary watcher (.py changes require dist-native)
 	  echo "─────────────────────────────────────────────"; \
 	done
 
-##@ Remote server  (XML-RPC on :8270)
+##@ Nix lockfiles (mvn2nix offline dependencies)
 
 .PHONY: mvn2nix.lock
-mvn2nix.lock:
-	nix run gitlab:vasara-bpm/mvn2nix -- pom.xml --goals=dependency:go-offline > mvn2nix.lock
+mvn2nix.lock:  ## Generate mvn2nix.lock for main project dependencies
+	nix run gitlab:vasara-bpm/mvn2nix -- pom.xml --goals=dependency:go-offline --repositories=file://$(HOME)/.m2/repository --repositories=https://repo.maven.apache.org/maven2/ > mvn2nix.lock
+
+.PHONY: operaton-process-test-coverage.lock
+operaton-process-test-coverage.lock: coverage-submodule  ## Generate mvn2nix lock for coverage library submodule
+	nix run gitlab:vasara-bpm/mvn2nix -- $(COVERAGE_SUBMODULE)/pom.xml --goals="dependency:go-offline -pl bom,extension/core,extension/engine-platform-7 -am" > operaton-process-test-coverage.lock
+
+.PHONY: mvn2nix-locks
+mvn2nix-locks: mvn2nix.lock operaton-process-test-coverage.lock  ## Generate both mvn2nix lock files (main + coverage)
+
+##@ Remote server  (XML-RPC on :8270)
 
 # ─── Remote server ───────────────────────────────────────────────────────────
 # Starts the Operaton keyword library as a Robot Framework Remote Server.

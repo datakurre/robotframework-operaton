@@ -103,20 +103,21 @@ class BpmnKeywords:
 
     @keyword
     @except_interop_exception
-    def log_bpmn_test_coverage(self, definition: str = "") -> None:
+    def log_bpmn_test_coverage(self, *definitions: str) -> None:
         """Logs process test coverage to the Robot log.
 
         Prints a table of every process definition exercised since
         ``Setup Process Engine`` together with its coverage percentage, and —
-        when *definition* is given — renders the covered path of that definition
-        as a highlighted SVG.
+        when *definitions* are given — renders the covered paths of those
+        definitions as highlighted SVGs.
 
         Coverage is collected by the ``operaton-process-test-coverage`` library,
         which must be on the classpath (it is bundled in both fat JARs). If the
         library is unavailable, the keyword logs a warning and returns without
         failing.
 
-        *definition* is a process definition key (e.g. ``multi-task-process``).
+        Each item in *definitions* is a process definition key (e.g.
+        ``multi-task-process``).
         Rendering the SVG additionally requires Node.js 18+ on PATH; if ``node``
         is unavailable the coverage table is still logged.
         """
@@ -170,52 +171,64 @@ class BpmnKeywords:
             f"<tbody>{html_rows}</tbody></table>"
         )
 
-        if not definition:
-            return
+        # Support multiple requested definitions while preserving order.
+        requested_definitions = []
+        seen = set()
+        for definition in definitions:
+            if definition and definition not in seen:
+                seen.add(definition)
+                requested_definitions.append(definition)
 
-        # --- Render the covered path of the requested definition as SVG ---
-        model = next((m for m in models if str(m.getKey()) == definition), None)
-        if model is None:
-            logger.warn(
-                f"BPMN test coverage: no covered model found for definition "
-                f"'{definition}' (was it executed since Setup Process Engine?)."
-            )
+        if not requested_definitions:
             return
 
         BpmnRenderer = java.type("org.operaton.bpm.extension.robot.BpmnRenderer")
         if not BpmnRenderer.isNodeAvailable():
             logger.warn(
-                f"BPMN coverage SVG skipped: 'node' not found on PATH "
-                f"(definition: {definition})"
+                "BPMN coverage SVG skipped: 'node' not found on PATH "
+                f"(definitions: {', '.join(requested_definitions)})"
             )
             return
 
-        bpmn_xml = str(model.getXml())
+        for definition in requested_definitions:
+            # --- Render the covered path of each requested definition as SVG ---
+            model = next((m for m in models if str(m.getKey()) == definition), None)
+            if model is None:
+                logger.warn(
+                    f"BPMN test coverage: no covered model found for definition "
+                    f"'{definition}' (was it executed since Setup Process Engine?)."
+                )
+                continue
 
-        covered_node_ids = set()
-        for event in suite.getEvents(definition):
-            if str(event.getSource()) == "FLOW_NODE":
-                covered_node_ids.add(str(event.getDefinitionKey()))
+            bpmn_xml = str(model.getXml())
 
-        # Covered flow nodes are highlighted as completed; sequence flows are
-        # inferred from covered endpoints by the renderer.
-        activities = [
-            {
-                "activityId": node_id,
-                "activityType": "",
-                "canceled": False,
-                "completed": True,
-                "incident": False,
-            }
-            for node_id in covered_node_ids
-        ]
+            covered_node_ids = set()
+            for event in suite.getEvents(definition):
+                if str(event.getSource()) == "FLOW_NODE":
+                    covered_node_ids.add(str(event.getDefinitionKey()))
 
-        input_json = json.dumps({"bpmn": bpmn_xml, "activities": activities})
-        try:
-            svg = str(BpmnRenderer.renderSvg(input_json))
-            print(
-                f'*HTML* <div class="bpmn-coverage" '
-                f'style="max-width:100%;overflow:auto">{svg}</div>'
-            )
-        except Exception as exc:
-            print(f"*WARN* BPMN coverage rendering failed: {exc}")
+            # Covered flow nodes are highlighted as completed; sequence flows are
+            # inferred from covered endpoints by the renderer.
+            activities = [
+                {
+                    "activityId": node_id,
+                    "activityType": "",
+                    "canceled": False,
+                    "completed": True,
+                    "incident": False,
+                }
+                for node_id in covered_node_ids
+            ]
+
+            input_json = json.dumps({"bpmn": bpmn_xml, "activities": activities})
+            try:
+                svg = str(BpmnRenderer.renderSvg(input_json))
+                print(
+                    f"*HTML* <h4>BPMN Coverage: {definition}</h4>"
+                    f'<div class="bpmn-coverage" '
+                    f'style="max-width:100%;overflow:auto">{svg}</div>'
+                )
+            except Exception as exc:
+                print(
+                    f"*WARN* BPMN coverage rendering failed for '{definition}': {exc}"
+                )
