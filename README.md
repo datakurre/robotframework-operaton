@@ -321,6 +321,7 @@ The `Operaton` library exposes ~44 keywords. The most common ones:
 | Clock / timers                     | `Set Clock`, `Advance Clock`, `Reset Clock`, `Execute Timer Jobs`                                                                                      | both        |
 | History                            | `Get Completed Instances`, `Get Historic Variables`                                                                                                    | both        |
 | Visualization _(Node.js required)_ | `Log Bpmn Execution`, `Log Dmn Result`                                                                                                                 | both        |
+| Coverage                           | `Log Bpmn Test Coverage` _(table always; SVG needs Node.js)_                                                                                           | both        |
 | Forms (Vasara)                     | `Submit Task Form`, `Get Task Form Variables`                                                                                                          | vasara only |
 
 The full library source is [src/main/resources/org.graalvm.python.vfs/src/Operaton.py](src/main/resources/org.graalvm.python.vfs/src/Operaton.py).

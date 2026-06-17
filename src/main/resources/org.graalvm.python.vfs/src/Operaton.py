@@ -55,6 +55,38 @@ try:
 except Exception:
     _VasaraPlugin = None
 
+# Process test coverage (operaton-process-test-coverage). Optional: only present
+# when the coverage library is on the classpath (it is bundled in the fat JARs).
+try:
+    _ProcessCoverageConfigurator: InteropObject | None = java.type(
+        "org.operaton.community.process_test_coverage.engine.platform7."
+        "ProcessCoverageConfigurator"
+    )
+    _DefaultCollector: InteropObject | None = java.type(
+        "org.operaton.community.process_test_coverage.core.model.DefaultCollector"
+    )
+    _ExecutionContextModelProvider: InteropObject | None = java.type(
+        "org.operaton.community.process_test_coverage.engine.platform7."
+        "ExecutionContextModelProvider"
+    )
+    _ProcessEngineAdapter: InteropObject | None = java.type(
+        "org.operaton.community.process_test_coverage.engine.platform7."
+        "ProcessEngineAdapter"
+    )
+    _CoverageSuite: InteropObject | None = java.type(
+        "org.operaton.community.process_test_coverage.core.model.Suite"
+    )
+    _CoverageRun: InteropObject | None = java.type(
+        "org.operaton.community.process_test_coverage.core.model.Run"
+    )
+except Exception:
+    _ProcessCoverageConfigurator = None
+    _DefaultCollector = None
+    _ExecutionContextModelProvider = None
+    _ProcessEngineAdapter = None
+    _CoverageSuite = None
+    _CoverageRun = None
+
 
 class Operaton(DynamicCore):
     """Robot Framework keyword library for acceptance-testing Operaton BPM processes and DMN decisions.
@@ -168,6 +200,9 @@ class Operaton(DynamicCore):
     engine: InteropObject | None = None
     _current_instance_id: str = ""
     _current_business_key: str = ""
+    # Process test coverage collector (set in Setup Process Engine when the
+    # operaton-process-test-coverage library is on the classpath).
+    coverage_collector: InteropObject | None = None
 
     def __init__(self) -> None:
         components = [
@@ -199,7 +234,34 @@ class Operaton(DynamicCore):
             # automatically by classpath-presence of fi.jyu.vasara.VasaraPlugin.
             if _VasaraPlugin is not None:
                 config.getProcessEnginePlugins().add(_VasaraPlugin())
+            # Register process test coverage extensions (parse listeners + event
+            # handlers) on the configuration before the engine is built. Only
+            # active when the coverage library is on the classpath.
+            if _ProcessCoverageConfigurator is not None:
+                _ProcessCoverageConfigurator.initializeProcessCoverageExtensions(config)
             self.engine = config.buildProcessEngine()
+            # Wire the coverage collector into the freshly built engine and open a
+            # suite + run so flow-node/sequence-flow events are recorded.
+            if (
+                _ProcessCoverageConfigurator is not None
+                and _DefaultCollector is not None
+                and _ExecutionContextModelProvider is not None
+                and _ProcessEngineAdapter is not None
+                and _CoverageSuite is not None
+                and _CoverageRun is not None
+            ):
+                self.coverage_collector = _DefaultCollector(
+                    _ExecutionContextModelProvider()
+                )
+                _ProcessEngineAdapter(
+                    self.engine, self.coverage_collector
+                ).initializeListeners()
+                self.coverage_collector.createSuite(_CoverageSuite("robot", "Robot"))
+                self.coverage_collector.activateSuite("robot")
+                self.coverage_collector.createRun(
+                    _CoverageRun("robot-run", "Robot Run"), "robot"
+                )
+                self.coverage_collector.activateRun("robot-run")
         return self.engine
 
     def _resolve_instance_id(self, process_instance_id: str = "") -> str:
@@ -378,6 +440,7 @@ class Operaton(DynamicCore):
         assert self.engine is not None, "No engine"
         self.engine.close()
         self.engine = None
+        self.coverage_collector = None
         self._current_instance_id = ""
         self._current_business_key = ""
 

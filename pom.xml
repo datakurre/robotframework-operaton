@@ -13,6 +13,7 @@
     <graalpy.version>25.0.3</graalpy.version>
     <graalpy.edition>python-community</graalpy.edition>
     <operaton.version>2.1.0</operaton.version>
+    <operaton-process-test-coverage.version>3.0.2-SNAPSHOT</operaton-process-test-coverage.version>
     <spring-boot.version>3.3.3</spring-boot.version>
     <native-maven-plugin.version>0.9.28</native-maven-plugin.version>
     <maven.compiler.target>17</maven.compiler.target>
@@ -114,6 +115,20 @@
     <dependency>
       <groupId>com.h2database</groupId>
       <artifactId>h2</artifactId>
+    </dependency>
+
+    <!-- Operaton process test coverage (built from the git submodule under
+         third_party/ via `make coverage-lib`; installed to the local Maven repo).
+         Bundled into both fat JARs so the coverage keywords are always available. -->
+    <dependency>
+      <groupId>org.operaton.community.process_test_coverage</groupId>
+      <artifactId>operaton-process-test-coverage-core</artifactId>
+      <version>${operaton-process-test-coverage.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.operaton.community.process_test_coverage</groupId>
+      <artifactId>operaton-process-test-coverage-engine-platform-7</artifactId>
+      <version>${operaton-process-test-coverage.version}</version>
     </dependency>
 
     <!-- Test dependencies -->
