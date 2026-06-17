@@ -180,7 +180,7 @@ class TimerKeywords:
         execute_jobs_before: bool = True,
         execute_jobs_after: bool = True,
         **variables: VariableValue,
-    ) -> int:
+    ) -> None:
         """Completes one external task for the given topic and executes pending jobs before and after."""
         assert self.ctx.engine, "No engine"
 
@@ -221,4 +221,4 @@ class TimerKeywords:
 
         # Complete async-after jobs etc.
         if execute_jobs_after:
-            return self.execute_jobs(instance_id)
+            self.execute_jobs(instance_id)
