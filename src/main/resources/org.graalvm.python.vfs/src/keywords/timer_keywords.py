@@ -84,14 +84,18 @@ class TimerKeywords:
         """
         assert self.ctx.engine, "No engine"
         management = self.ctx.engine.getManagementService()
-        query = management.createJobQuery().timers()
         effective_id = process_instance_id or self.ctx._current_instance_id
-        if effective_id:
-            query = query.processInstanceId(effective_id)
-        jobs = query.list()
-        for i in range(int(jobs.size())):
-            job = jobs.get(i)
-            management.executeJob(job.getId())
+        while True:
+            query = management.createJobQuery().timers()
+            if effective_id:
+                query = query.processInstanceId(effective_id)
+            jobs = query.listPage(0, 1)
+            if int(jobs.size()) == 0:
+                break
+            # Executing one timer can cancel sibling timers on the same activity,
+            # so refetch before each execution instead of iterating a stale list.
+            job = jobs.get(0)
+            management.executeJob(str(job.getId()))
 
     @keyword
     @except_interop_exception
