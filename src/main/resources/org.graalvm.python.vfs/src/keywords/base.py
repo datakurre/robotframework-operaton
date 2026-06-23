@@ -115,7 +115,7 @@ def except_interop_exception(func: Callable[P, R]) -> Callable[P, R]:
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         try:
             return func(*args, **kwargs)
-        except Exception as exc:
+        except BaseException as exc:
             message = _interop_message(exc)
             try:
                 frames = _interop_stack(exc)
@@ -127,7 +127,9 @@ def except_interop_exception(func: Callable[P, R]) -> Callable[P, R]:
                         print(stack_text)
             except Exception:
                 pass
-            raise AssertionError(message) from exc
+            # GraalPy interop can surface foreign throwables that are not
+            # valid Python exception causes for ``raise ... from``.
+            raise AssertionError(message)
 
     return wrapper
 
