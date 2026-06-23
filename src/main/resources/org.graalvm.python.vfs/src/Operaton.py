@@ -581,11 +581,33 @@ class Operaton(DynamicCore):
         """Returns the value of a process variable.
 
         Defaults to the current instance in scope; pass ``process_instance_id`` to override.
+        Falls back to history if the runtime execution no longer exists (e.g., after subprocess completion).
         """
         assert self.engine, "No engine"
         instance_id = self._resolve_instance_id(process_instance_id)
         runtime = self.engine.getRuntimeService()
-        return runtime.getVariable(instance_id, variable_name)
+
+        # Get runtime variable if the instance is still active
+        is_running = bool(
+            runtime.createProcessInstanceQuery().processInstanceId(instance_id).count()
+        )
+        if is_running:
+            value = runtime.getVariable(instance_id, variable_name)
+            return value
+
+        # Fall back to history for completed/ended instances
+        history = self.engine.getHistoryService()
+        historic_var = (
+            history.createHistoricVariableInstanceQuery()
+            .processInstanceId(instance_id)
+            .variableName(variable_name)
+            .singleResult()
+        )
+        if historic_var is not None:
+            return historic_var.getValue()
+
+        # Variable not found in either runtime or history
+        return None
 
     @keyword
     @except_interop_exception
