@@ -96,9 +96,22 @@ let
         chmod -R +w "$COVERAGE_BUILD/coverage"
         
         echo "=== Building coverage library ==="
+        # project.build.outputTimestamp pins every ZIP entry timestamp and the
+        # JAR manifest build time to a fixed value (maven-archiver honors this
+        # property, including via -D). Without it the locally built coverage
+        # SNAPSHOT JARs embed the wall-clock build time, so their bytes -- and
+        # therefore the recursive output hash -- differ between machines/builds.
+        # dokka.skip disables the dokka-maven-plugin:javadocJar execution that
+        # builds the *-javadoc.jar artifacts. Those jars are not needed by the
+        # consuming build and the Dokka archiver does NOT honor
+        # project.build.outputTimestamp, so their ZIP entry timestamps would
+        # otherwise reintroduce nondeterminism. (maven.javadoc.skip has no
+        # effect here because javadoc is produced by Dokka, not maven-javadoc.)
         (cd "$COVERAGE_BUILD/coverage" && \
           mvn -q -pl bom,extension/core,extension/engine-platform-7 -am install \
             -Dmaven.test.skip=true \
+            -Ddokka.skip=true \
+            -Dproject.build.outputTimestamp=2024-01-01T00:00:00Z \
             -Dmaven.repo.local=$out \
             -B)
         echo "=== Coverage library build completed ==="
@@ -123,17 +136,42 @@ let
       echo "=== Build finished ==="
     '';
     installPhase = ''
+      # Remove resolver bookkeeping files that carry per-build state.
       find $out -type f \
         \( -name "*.lastUpdated" \
         -o -name "resolver-status.properties" \
         -o -name "_remote.repositories" \) \
         -delete
+
+      # Safety net: drop any *-javadoc.jar that slipped through (see dokka.skip
+      # above). Dokka-built javadoc jars embed wall-clock ZIP entry timestamps
+      # and are not needed by the consuming build, so removing them keeps the
+      # recursive output hash reproducible.
+      find $out -type f -name "*-javadoc.jar" -delete
+
+      # The locally installed coverage SNAPSHOT artifacts get maven-metadata
+      # files whose timestamp elements record the install time. Pin them all to
+      # a fixed value so the recursive output hash is reproducible across
+      # machines, while keeping the metadata present for offline SNAPSHOT
+      # resolution in the consuming build. The relevant elements are
+      # <lastUpdated> (artifact-level), and <timestamp>/<updated> inside each
+      # <snapshotVersion> entry (version-level maven-metadata-local.xml).
+      find $out -type f -name "maven-metadata*.xml" -print0 \
+        | while IFS= read -r -d "" meta; do
+            sed -i \
+              -e 's#<lastUpdated>[0-9]*</lastUpdated>#<lastUpdated>20240101000000</lastUpdated>#g' \
+              -e 's#<timestamp>[0-9.]*</timestamp>#<timestamp>20240101.000000</timestamp>#g' \
+              -e 's#<updated>[0-9]*</updated>#<updated>20240101000000</updated>#g' \
+              "$meta"
+          done
     '';
     dontFixup = true;
     outputHashAlgo = "sha256";
     outputHashMode = "recursive";
-    # Hash updated to include coverage library artifacts from the Nix input.
-    outputHash = "sha256-FaK1QS0b2uUzt67O92dmYi2ICmWwMlKz1nWo0YZjxSE=";
+    # Deterministic across machines: coverage SNAPSHOT JARs are built with a
+    # pinned project.build.outputTimestamp and maven-metadata timestamps are
+    # normalized in installPhase (see above).
+    outputHash = "sha256-Icu8IP2cDLkiWVnhVSEhc2Bs2d65AuzYm5xzqP9E3Tg=";
   };
 in
 stdenv.mkDerivation rec {
