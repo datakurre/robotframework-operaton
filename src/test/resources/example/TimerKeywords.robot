@@ -42,14 +42,24 @@ Execute Jobs Can Be Limited To One
     Should Have Task    timer-fired-task
     [Teardown]    Run Keywords    Reset Clock    AND    Teardown Process Engine
 
-Execute Jobs Until External Task Stops At External Task
+Execute Jobs Until Wait State Stops At User Task
+    [Setup]    Setup Process Engine
+    Deploy Resources    ${CURDIR}${/}timer-process.bpmn
+    Set Clock    2025-01-01T00:00:00
+    Start Instance    timer-process
+    Advance Clock    3600000
+    Execute Jobs Until Wait State    user_task
+    Log Bpmn Execution
+    Should Have Task    timer-fired-task
+    [Teardown]    Run Keywords    Reset Clock    AND    Teardown Process Engine
+
+Execute Jobs Until Wait State Stops At External Task
     [Setup]    Setup Process Engine
     Deploy Resources    ${CURDIR}${/}multi-event.bpmn
     Start Instance    multi-event-process
-    Log Bpmn Execution
-    Execute Jobs Until External Task    mail-send
-    # Verify the external task is now pending and can be completed
+    Execute Jobs Until Wait State    external_task    topic=mail-send
+    Should Have Active
     ${tasks}=    Fetch And Lock    mail-send
-    ${count}=    Get Length    ${tasks}
-    Should Be Equal As Integers    ${count}    1
+    ${task_count}=    Get Length    ${tasks}
+    Should Be Equal As Integers    ${task_count}    1
     [Teardown]    Teardown Process Engine
