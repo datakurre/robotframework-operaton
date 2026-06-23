@@ -172,7 +172,7 @@ class Operaton(DynamicCore):
     | Process instances    | Start Instance, Start Instance With Variables, Get Current Instance, Get Current Business Key |
     | User tasks           | Should Have Task, Complete Task, Get Tasks                        |
     | Process variables    | Get Process Variable, Set Process Variable                        |
-    | Process state        | Should Be Active, Should Be Ended, Should Be Suspended, Suspend Instance, Activate Instance, Should Have Active, Should Have Completed |
+    | Process state        | Should Be Active, Should Be Ended, Should Be Suspended, Suspend Instance, Activate Instance, Stop Instance, Should Have Active, Should Have Completed |
     | History              | Get Activity History, Get Historic Variables, Get Completed Instances, Get Process Definition Id, Get Process Model Xml |
     | Events               | Correlate Message, Send Message, Signal Event, Throw Signal, Should Have Incident |
     | External tasks       | Fetch And Lock, Complete External Task, Throw Bpmn Error          |

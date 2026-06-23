@@ -57,3 +57,11 @@ Should Have Completed Checks Activity Instances
     Should Have Completed    task-b    times=1
     Should Have Completed    EndEvent_1
     [Teardown]    Teardown Process Engine
+
+Process Should Be Ended After Stop Instance
+    [Setup]    Setup Process Engine
+    Deploy Resources    ${CURDIR}${/}process.bpmn
+    Start Instance    my-project-process
+    Stop Instance
+    Should Be Ended
+    [Teardown]    Teardown Process Engine
