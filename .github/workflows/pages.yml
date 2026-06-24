@@ -34,6 +34,9 @@ jobs:
           distribution: temurin
           cache: maven
 
+      - name: Install coverage SNAPSHOT dependencies
+        run: make coverage-lib
+
       - name: Build (skip tests)
         run: mvn -q -DskipTests package
 

@@ -29,6 +29,9 @@ jobs:
           distribution: temurin
           cache: maven
 
+      - name: Install coverage SNAPSHOT dependencies
+        run: make coverage-lib
+
       - name: Run tests
         run: mvn -q test
 
