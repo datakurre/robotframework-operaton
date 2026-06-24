@@ -175,7 +175,12 @@ class TimerKeywords:
 
     @keyword
     @except_interop_exception
-    def execute_jobs(self, process_instance_id: str = "", max_jobs: int = 0) -> int:
+    def execute_jobs(
+        self,
+        process_instance_id: str = "",
+        max_jobs: int = 0,
+        prioritize_non_timers: bool = True,
+    ) -> int:
         """Executes all pending jobs (async continuations, messages, timers) for the instance.
 
          Useful for advancing past async intermediate events
@@ -184,11 +189,15 @@ class TimerKeywords:
         Returns the number of jobs executed.
         Set ``max_jobs`` to execute only the first N jobs from the pending batch.
         ``max_jobs=0`` (default) means no limit.
+        With ``prioritize_non_timers=true`` (default), executable non-timer jobs are
+        executed before timer jobs. This helps avoid accidental timer progression
+        when only a limited number of jobs are executed.
 
         Example usage in Robot::
 
             Execute Jobs
             Execute Jobs    ${instance_id}
+            Execute Jobs    ${instance_id}    max_jobs=1
         """
         assert self.ctx.engine, "No engine"
         management = self.ctx.engine.getManagementService()
@@ -197,11 +206,35 @@ class TimerKeywords:
         if effective_id:
             query = query.processInstanceId(effective_id)
         jobs = query.list()
-        count = int(jobs.size())
+
+        ordered_job_ids: list[str] = []
+        if prioritize_non_timers:
+            # Fetch timer jobs to identify them and order non-timer jobs first
+            timer_query = management.createJobQuery().timers()
+            if effective_id:
+                timer_query = timer_query.processInstanceId(effective_id)
+            timers = timer_query.list()
+            timer_ids: set[str] = set()
+            for i in range(int(timers.size())):
+                timer_ids.add(str(timers.get(i).getId()))
+
+            non_timer_ids: list[str] = []
+            timer_ids_in_order: list[str] = []
+            for i in range(int(jobs.size())):
+                job_id = str(jobs.get(i).getId())
+                if job_id in timer_ids:
+                    timer_ids_in_order.append(job_id)
+                else:
+                    non_timer_ids.append(job_id)
+            ordered_job_ids = non_timer_ids + timer_ids_in_order
+        else:
+            for i in range(int(jobs.size())):
+                ordered_job_ids.append(str(jobs.get(i).getId()))
+
+        count = len(ordered_job_ids)
         limit = count if int(max_jobs) <= 0 else min(count, int(max_jobs))
         for i in range(limit):
-            job = jobs.get(i)
-            management.executeJob(str(job.getId()))
+            management.executeJob(ordered_job_ids[i])
         return limit
 
     @keyword
@@ -214,6 +247,7 @@ class TimerKeywords:
         topic: str = "",
         task_name: str = "",
         event_name: str = "",
+        include_timer_jobs: bool = False,
     ) -> None:
         """Executes jobs one at a time until a selected wait state appears.
 
@@ -228,12 +262,15 @@ class TimerKeywords:
         - ``topic`` is used with ``external_task``.
         - ``task_name`` is used with ``user_task``.
         - ``event_name`` is used with ``message/signal/conditional_subscription``.
+                - ``include_timer_jobs`` controls whether timer jobs may be executed while waiting.
+                    Default is ``False`` to avoid accidental timer boundary activation.
 
         Example usage in Robot::
 
             Execute Jobs Until Wait State    user_task
             Execute Jobs Until Wait State    external_task    topic=mail-send
             Execute Jobs Until Wait State    any    max_rounds=50
+            Execute Jobs Until Wait State    timer_job    include_timer_jobs=${True}
         """
         assert self.ctx.engine, "No engine"
         effective_id = process_instance_id or self.ctx._current_instance_id
@@ -258,11 +295,34 @@ class TimerKeywords:
                 .executable()
                 .processInstanceId(str(effective_id))
             )
-            jobs = query.listPage(0, 1)
+
+            jobs = query.listPage(0, 50)
             if int(jobs.size()) == 0:
                 break
-            job = jobs.get(0)
-            management.executeJob(str(job.getId()))
+
+            timer_ids: set[str] = set()
+            if not include_timer_jobs:
+                timer_query = (
+                    management.createJobQuery()
+                    .timers()
+                    .processInstanceId(str(effective_id))
+                )
+                timers = timer_query.list()
+                for i in range(int(timers.size())):
+                    timer_ids.add(str(timers.get(i).getId()))
+
+            next_job_id = ""
+            for i in range(int(jobs.size())):
+                candidate_id = str(jobs.get(i).getId())
+                if candidate_id in timer_ids:
+                    continue
+                next_job_id = candidate_id
+                break
+
+            if not next_job_id:
+                break
+
+            management.executeJob(next_job_id)
 
     @keyword
     @except_interop_exception
