@@ -57,8 +57,9 @@ public class VasaraPlugin extends AbstractProcessEnginePlugin {
     // --- Raise exceptions for unhandled BPMN errors instead of silently ignoring them ---
     configuration.setEnableExceptionsAfterUnhandledBpmnError(true);
 
-    // --- Global default history TTL (1 day) for definitions without explicit historyTimeToLive ---
-    configuration.setHistoryTimeToLive("P1D");
+    // --- Global default history TTL (2 years) for definitions without explicit historyTimeToLive
+    // ---
+    configuration.setHistoryTimeToLive("P730D");
 
     // --- BPMN parse listeners ---
     List<BpmnParseListener> postParseListeners = configuration.getCustomPostBPMNParseListeners();
