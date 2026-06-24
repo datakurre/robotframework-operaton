@@ -1,5 +1,5 @@
 from robot.api.deco import keyword
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 from keywords.base import Variables, VariableValue, java, except_interop_exception
 
@@ -70,7 +70,7 @@ class TimerKeywords:
     ) -> bool:
         normalized = self._normalize_wait_for(wait_for)
 
-        checks = {
+        checks: dict[str, Callable[[], bool]] = {
             "external_task": lambda: self._has_external_task(
                 topic, process_instance_id
             ),
