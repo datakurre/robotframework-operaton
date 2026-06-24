@@ -89,6 +89,42 @@ class ProcessAssertions:
 
     @keyword
     @except_interop_exception
+    def stop_instance(self, process_instance_id: str = "") -> None:
+        """Stops (terminates) a process instance while preserving its history. Defaults to the current instance.
+
+        The instance is removed from active execution but remains in the history for auditing
+        and test coverage tracking. The current instance state is preserved, so subsequent
+        keywords can still reference the stopped instance for queries and assertions.
+
+        By default, execution listeners and I/O variable mappings are skipped during deletion
+        to avoid side effects.
+
+        If the instance is already stopped, this keyword does nothing.
+        """
+        assert self.ctx.engine, "No engine"
+        instance_id = self.ctx._resolve_instance_id(process_instance_id)
+        runtime = self.ctx.engine.getRuntimeService()
+
+        # Check if instance is still active
+        instance = (
+            runtime.createProcessInstanceQuery()
+            .processInstanceId(instance_id)
+            .singleResult()
+        )
+
+        # Only delete if the instance is still active
+        if instance is not None:
+            runtime.deleteProcessInstance(
+                instance_id,
+                "Stopped via Stop Instance keyword",
+                True,  # skipCustomListeners
+                True,  # externallyTerminated
+                True,  # skipIoMappings
+                False,  # skipSubprocesses
+            )
+
+    @keyword
+    @except_interop_exception
     def should_have_active(
         self,
         activity_id: str = "",
