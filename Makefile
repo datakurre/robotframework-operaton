@@ -79,7 +79,7 @@ dist-docs: coverage-lib  ## Keyword HTML reference → $(DOCS_DIR)/Operaton.html
 	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Libdoc $(DOCS_DIR)/Operaton.html"
 
 .PHONY: dist-libspec
-dist-libspec: coverage-lib  ## Keyword spec for RobotCode LSP → $(DOCS_DIR)/Operaton.libspec  [DOCS_DIR=docs]
+dist-libspec: coverage-lib  ## Published library spec artifact → $(DOCS_DIR)/Operaton.libspec  [DOCS_DIR=docs]
 	mkdir -p $(DOCS_DIR)
 	$(call _run_maven_with_graalpy_retry,mvn -q -DskipTests package,dist-libspec)
 	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Libdoc $(DOCS_DIR)/Operaton.libspec"

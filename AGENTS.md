@@ -14,8 +14,8 @@ Guidance for coding agents working in this repository.
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ RobotCode (VS Code)  or  CPython robot CLI                  │
-│   → uses Operaton.libspec for keyword discovery (LSP)       │
-│   → imports python/src/Operaton/ proxy for execution        │
+│   → imports python/src/Operaton/ proxy for editor metadata  │
+│     and execution                                           │
 └──────────┬──────────────────────────────────────────────────┘
            │ XML-RPC (Robot Framework Remote protocol)
            ▼
@@ -53,7 +53,7 @@ Tests are driven by JUnit 5: each `*Test.java` calls `RobotCliTest.runRobot(...)
 | [src/main/java/org/operaton/bpm/extension/robot/Robot.java](src/main/java/org/operaton/bpm/extension/robot/Robot.java)               | CLI entry point (forwards args to `robot.run.run_cli`). Dispatches `--watch` and `--remote`.                                                |
 | [src/main/java/org/operaton/bpm/extension/robot/RobotRemote.java](src/main/java/org/operaton/bpm/extension/robot/RobotRemote.java)   | Remote server mode: hosts Operaton library over XML-RPC for CPython/RobotCode.                                                              |
 | [src/main/java/org/operaton/bpm/extension/robot/RobotWatch.java](src/main/java/org/operaton/bpm/extension/robot/RobotWatch.java)     | Watch mode (`--watch`): keeps one GraalPy context alive; re-runs Robot on file changes (~1 s). Recreates context on `.py` changes (~2–3 s). |
-| [src/main/java/org/operaton/bpm/extension/robot/Libdoc.java](src/main/java/org/operaton/bpm/extension/robot/Libdoc.java)             | Generates keyword docs (HTML) and machine-readable `.libspec` for RobotCode LSP.                                                            |
+| [src/main/java/org/operaton/bpm/extension/robot/Libdoc.java](src/main/java/org/operaton/bpm/extension/robot/Libdoc.java)             | Generates keyword docs (HTML) and a machine-readable `.libspec` artifact for publication and inspection.                                    |
 | [src/main/resources/org.graalvm.python.vfs/src/Operaton.py](src/main/resources/org.graalvm.python.vfs/src/Operaton.py)               | The keyword library. **Add new keywords here.**                                                                                             |
 | [src/test/java/org/operaton/bpm/extension/robot/RobotCliTest.java](src/test/java/org/operaton/bpm/extension/robot/RobotCliTest.java) | Shared `runRobot(outputDir, suitePath)` helper + smoke tests.                                                                               |
 | `src/test/java/.../*Test.java`                                                                                                       | One JUnit class per feature; each invokes a same-named `.robot` suite.                                                                      |
@@ -136,7 +136,7 @@ devenv shell --no-eval-cache -- make run SUITE="--loglevel DEBUG src/test/resour
 | `dist-native`                         | Native binary (GraalVM native-image; slow): `-Pnative package`                                |
 | `dist-wheel`                          | CPython proxy wheel under `python/dist/`                                                      |
 | `dist-docs`                           | Generate `docs/Operaton.html` keyword reference                                               |
-| `dist-libspec`                        | Generate `docs/Operaton.libspec` for RobotCode LSP                                            |
+| `dist-libspec`                        | Generate `docs/Operaton.libspec` as a published library-spec artifact                         |
 | `clean`                               | `mvn clean`                                                                                   |
 | `test`                                | All JUnit + Robot suites (Nix-aware: uses `-Pnix` in devenv)                                  |
 | `check`                               | `mvn verify` (test + integration checks)                                                      |

@@ -12,8 +12,8 @@ import org.graalvm.python.embedding.GraalPyResources;
  * <p>Usage: {@code Libdoc [output-path]} — defaults to {@code docs/Operaton.html}.
  *
  * <p>The output format is inferred from the file extension: {@code .html} produces human-readable
- * docs, {@code .libspec} or {@code .xml} produces a machine-readable XML spec (used by RobotCode
- * LSP for keyword discovery), and {@code .json} produces a JSON spec.
+ * docs, {@code .libspec} or {@code .xml} produces the standard machine-readable XML library spec,
+ * and {@code .json} produces a JSON spec.
  */
 public class Libdoc {
   private static final String PYTHON = "python";

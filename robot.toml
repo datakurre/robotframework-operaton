@@ -1,19 +1,18 @@
-# robot.toml — RobotCode integration for Operaton Robot Framework library
+# robot.toml — RobotCode integration for the Operaton Robot Framework library.
 #
-# This configuration enables the RobotCode VS Code extension to:
-# 1. Discover Operaton keywords via the .libspec file (LSP completions, hover)
-# 2. Execute tests via the CPython proxy that auto-spawns the GraalPy/JVM backend
+# This file configures the active VS Code / RobotCode integration around the
+# CPython proxy library and the JVM / GraalPy backend.
 #
 # Prerequisites:
 #   - Java 21+ on PATH (or JAVA_HOME set)
-#   - Fat JAR built: mvn -Pshade package -DskipTests
+#   - Fat JAR built: make dist-fat
 #   - Python proxy installed: pip install -e python/
-#   - Libspec generated: make libspec
 
 paths = ["src/test/resources/example"]
 
 [env]
 OPERATON_JAR = "target/operaton-bpm-extension-robot-1.0-SNAPSHOT-fat.jar"
+# Path to the fat JAR used by the CPython proxy when it auto-starts the backend.
 # GraalPy JVM startup takes ~20-30s; raise RobotCode's library-load timeout accordingly.
 ROBOTCODE_LOAD_LIBRARY_TIMEOUT = "120"
 # ── Faster iteration (optional) ─────────────────────────────────────────────
@@ -26,12 +25,7 @@ ROBOTCODE_LOAD_LIBRARY_TIMEOUT = "120"
 #   (automatically manages server + robot.toml for you)
 #
 # Option B — Manual terminal:
-#   java -jar lib/operaton-bpm-extension-robot-1.0-SNAPSHOT-fat.jar --remote --port 8270
+#   make remote
+#   or: java -jar target/operaton-bpm-extension-robot-1.0-SNAPSHOT-fat.jar --remote --port 8270
 #   Then uncomment the line below:
 # OPERATON_REMOTE = "http://127.0.0.1:8270"
-
-[tool.robotcode-analyze]
-# Prevent RobotCode from importing the Operaton library during analysis
-# (which would start a JVM). The .libspec provides keyword info instead.
-[tool.robotcode-analyze.cache]
-ignored-libraries = ["Operaton"]

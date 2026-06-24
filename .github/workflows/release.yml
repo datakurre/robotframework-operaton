@@ -84,5 +84,5 @@ jobs:
             --generate-notes \
             "$FAT_JAR#Fat JAR (standard)" \
             "$VASARA_JAR#Fat JAR (Vasara form customizations)" \
-            "docs/Operaton.libspec#Operaton.libspec (RobotCode keyword discovery)" \
+            "docs/Operaton.libspec#Operaton.libspec (library spec artifact)" \
             "$WHEEL#CPython proxy wheel"
