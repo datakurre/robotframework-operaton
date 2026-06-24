@@ -20,6 +20,7 @@ import org.operaton.bpm.engine.impl.form.validator.FormFieldValidator;
  *       number} (Long/Double)
  *   <li>No-op validators for {@code pattern} and {@code type} constraints
  *   <li>{@code enableExceptionsAfterUnhandledBpmnError = true}
+ *   <li>{@code historyTimeToLive = "P1D"} as a global default
  *   <li>BPMN parse listeners for start event and user task form variable initialization and {@code
  *       taskAssignee} injection
  * </ul>
@@ -55,6 +56,9 @@ public class VasaraPlugin extends AbstractProcessEnginePlugin {
 
     // --- Raise exceptions for unhandled BPMN errors instead of silently ignoring them ---
     configuration.setEnableExceptionsAfterUnhandledBpmnError(true);
+
+    // --- Global default history TTL (1 day) for definitions without explicit historyTimeToLive ---
+    configuration.setHistoryTimeToLive("P1D");
 
     // --- BPMN parse listeners ---
     List<BpmnParseListener> postParseListeners = configuration.getCustomPostBPMNParseListeners();
