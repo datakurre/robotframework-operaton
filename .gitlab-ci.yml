@@ -197,7 +197,7 @@ publish-release:
               "link_type": "package"
             },
             {
-              "name": "Operaton.libspec (RobotCode keyword discovery)",
+              "name": "Operaton.libspec (library spec artifact)",
               "url": "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/operaton-robot/${VERSION}/Operaton.libspec",
               "link_type": "other"
             },

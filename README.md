@@ -88,7 +88,7 @@ hover documentation, and the **Run Test** gutter button all work out of the box.
   `Log Dmn Result` (diagram rendering). If `node` is absent those keywords log a
   warning and skip rendering without failing the test.
 
-### 1. Get the fat JAR and libspec
+### 1. Get the fat JAR
 
 **From a release** — download from the
 [GitLab Releases](https://gitlab.com/vasara-bpm/robotframework-operaton/-/releases) page:
@@ -96,7 +96,9 @@ hover documentation, and the **Run Test** gutter button all work out of the box.
 - `operaton-bpm-extension-robot-<version>-fat.jar` (standard) **or**
   `operaton-bpm-extension-robot-<version>-vasara.jar` (with Vasara form customizations)
   → place it anywhere convenient (e.g. `lib/`)
-- `Operaton.libspec` → place it in `docs/` in your project root
+
+If you also want the published library spec artifact, generate or download
+`Operaton.libspec` and place it in `docs/` in your project root.
 
 **From source** — requires Java 21, Maven, and [devenv](https://devenv.sh/):
 
@@ -131,14 +133,12 @@ paths = ["src/test/resources/example"]
 OPERATON_JAR = "lib/operaton-bpm-extension-robot-1.0-fat.jar"
 # GraalPy JVM startup takes ~20-30s; raise RobotCode's library-load timeout accordingly.
 ROBOTCODE_LOAD_LIBRARY_TIMEOUT = "120"
-
-[tool.robotcode-analyze.cache]
-ignored-libraries = ["Operaton"]
 ```
 
-`ignored-libraries` prevents RobotCode from importing the library during static
-analysis (which would start a JVM); the `.libspec` provides keyword information
-instead.
+In the RobotCode 2.6.0 setup used in this repository, editor metadata is
+resolved by importing the CPython proxy library, which then starts or connects
+to the JVM backend. `docs/Operaton.libspec` is treated as a published build
+artifact, not as part of the active editor integration.
 
 ### Usage in VS Code
 
@@ -150,6 +150,10 @@ Open any `.robot` file that uses `Library  Operaton`. You get:
   runs the test, and shows results in the Test Results panel
 - **Debug** — Robot-level breakpoints work (Python-side); Java keyword
   internals are opaque
+
+If VS Code shows `loading` before hover/completion data appears, that is the
+expected symptom of RobotCode importing the `Operaton` library through the
+proxy/backend path.
 
 ### Faster iteration (persistent Remote server)
 

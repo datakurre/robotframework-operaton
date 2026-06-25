@@ -65,6 +65,7 @@ let
           settings.excludes = [
             "target/**"
             ".devenv/**"
+            "third_party/**"
           ];
 
           programs = {

@@ -82,5 +82,8 @@ Deploy And Run
 
 ## RobotCode / VS Code Integration
 
-See the main repository's README for `robot.toml` configuration that provides
-keyword discovery via `.libspec` and test execution via this proxy.
+See the main repository's README for the `robot.toml` configuration used by
+RobotCode and the VS Code extension. In the current setup, editor metadata and
+test execution both go through this proxy path. The generated
+`docs/Operaton.libspec` file is a published artifact, not part of the active
+editor integration for the `Operaton` library.
