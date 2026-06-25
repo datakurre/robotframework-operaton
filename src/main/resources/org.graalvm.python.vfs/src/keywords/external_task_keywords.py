@@ -69,6 +69,49 @@ class ExternalTaskKeywords:
 
     @keyword
     @except_interop_exception
+    def complete_external_task_for_topic(
+        self,
+        topic: str,
+        process_instance_id: str = "",
+        worker_id: str = "robot-worker",
+        **variables: VariableValue,
+    ) -> None:
+        """Fetches, locks, and completes one external task for the given topic in the selected process instance."""
+        assert self.ctx.engine, "No engine"
+
+        instance_id = process_instance_id or self.ctx._current_instance_id
+        assert (
+            instance_id
+        ), "No process instance id provided and no current instance in scope"
+
+        external_task_service = self.ctx.engine.getExternalTaskService()
+        tasks = (
+            external_task_service.fetchAndLock(10, worker_id)
+            .topic(topic, 1000)
+            .execute()
+        )
+
+        matching_task = None
+        for i in range(int(tasks.size())):
+            task = tasks.get(i)
+            if str(task.getProcessInstanceId()) == str(instance_id):
+                matching_task = task
+                break
+
+        assert (
+            matching_task
+        ), f"No external task found for topic '{topic}' in process instance {instance_id}"
+
+        if variables:
+            var_map = Variables.createVariables()
+            for var_name, value in variables.items():
+                var_map.putValue(var_name, value)
+            external_task_service.complete(matching_task.getId(), worker_id, var_map)
+        else:
+            external_task_service.complete(matching_task.getId(), worker_id)
+
+    @keyword
+    @except_interop_exception
     def throw_bpmn_error(
         self,
         external_task_id: str,
