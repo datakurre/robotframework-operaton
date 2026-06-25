@@ -48,7 +48,7 @@ Execute Jobs Until Wait State Stops At User Task
     Set Clock    2025-01-01T00:00:00
     Start Instance    timer-process
     Advance Clock    3600000
-    Execute Jobs Until Wait State    user_task
+    Execute Jobs Until Wait State    user_task    include_timer_jobs=${True}
     Log Bpmn Execution
     Should Have Task    timer-fired-task
     [Teardown]    Run Keywords    Reset Clock    AND    Teardown Process Engine

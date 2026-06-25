@@ -190,14 +190,12 @@ class TimerKeywords:
         Set ``max_jobs`` to execute only the first N jobs from the pending batch.
         ``max_jobs=0`` (default) means no limit.
         With ``prioritize_non_timers=true`` (default), executable non-timer jobs are
-        executed before timer jobs. This helps avoid accidental timer progression
-        when only a limited number of jobs are executed.
+        executed before timer jobs. This helps avoid accidental timer progression.
 
         Example usage in Robot::
 
             Execute Jobs
-            Execute Jobs    ${instance_id}
-            Execute Jobs    ${instance_id}    max_jobs=1
+            Execute Jobs    max_jobs=1
         """
         assert self.ctx.engine, "No engine"
         management = self.ctx.engine.getManagementService()
