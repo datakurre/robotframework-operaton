@@ -15,6 +15,14 @@ class TimerKeywords:
     def _normalize_wait_for(self, wait_for: str) -> str:
         return str(wait_for).strip().lower().replace("-", "_").replace(" ", "_")
 
+    def _require_process_instance_id(self, process_instance_id: str) -> str:
+        assert self.ctx.engine, "No engine"
+        effective_id = process_instance_id or self.ctx._current_instance_id
+        assert (
+            effective_id
+        ), "No process instance id provided and no current instance in scope"
+        return str(effective_id)
+
     def _has_external_task(self, topic: str, process_instance_id: str = "") -> bool:
         """Check if an external task exists for the given topic without locking it."""
         assert self.ctx.engine, "No engine"
@@ -60,6 +68,28 @@ class TimerKeywords:
             query = query.processInstanceId(process_instance_id)
         return int(query.count()) > 0
 
+    def _get_next_non_timer_job_id(self, process_instance_id: str) -> str:
+        management = self.ctx.engine.getManagementService()
+
+        jobs = (
+            management.createJobQuery()
+            .executable()
+            .processInstanceId(process_instance_id)
+            .listPage(0, 50)
+        )
+
+        if int(jobs.size()) == 0:
+            return ""
+
+        timer_ids = self._get_timer_job_ids(process_instance_id)
+
+        for i in range(int(jobs.size())):
+            job_id = str(jobs.get(i).getId())
+            if job_id not in timer_ids:
+                return job_id
+
+        return ""
+
     def _has_wait_state(
         self,
         wait_for: str,
@@ -88,7 +118,14 @@ class TimerKeywords:
         }
 
         if normalized == "any":
-            return any(check() for check in checks.values())
+            non_timer_wait_states = (
+                "external_task",
+                "user_task",
+                "message_subscription",
+                "signal_subscription",
+                "conditional_subscription",
+            )
+            return any(checks[name]() for name in non_timer_wait_states)
 
         try:
             return checks[normalized]()
@@ -97,6 +134,44 @@ class TimerKeywords:
             raise AssertionError(
                 f"Unsupported wait_for value '{wait_for}'. Supported values: {supported}"
             )
+
+    def _get_executable_jobs(self, process_instance_id: str):
+        management = self.ctx.engine.getManagementService()
+        return (
+            management.createJobQuery()
+            .executable()
+            .processInstanceId(process_instance_id)
+            .listPage(0, 50)
+        )
+
+    def _get_timer_job_ids(self, process_instance_id: str) -> set[str]:
+        management = self.ctx.engine.getManagementService()
+        timers = (
+            management.createJobQuery()
+            .timers()
+            .processInstanceId(process_instance_id)
+            .list()
+        )
+
+        return {str(timers.get(i).getId()) for i in range(int(timers.size()))}
+
+    def _select_next_non_timer_job_id(self, process_instance_id: str) -> str:
+        jobs = self._get_executable_jobs(process_instance_id)
+        if int(jobs.size()) == 0:
+            return ""
+
+        timer_ids = self._get_timer_job_ids(process_instance_id)
+
+        for i in range(int(jobs.size())):
+            job_id = str(jobs.get(i).getId())
+            if job_id not in timer_ids:
+                return job_id
+
+        return ""
+
+    def _execute_job(self, job_id: str) -> None:
+        management = self.ctx.engine.getManagementService()
+        management.executeJob(job_id)
 
     @keyword
     @except_interop_exception
@@ -235,6 +310,7 @@ class TimerKeywords:
             management.executeJob(ordered_job_ids[i])
         return limit
 
+    """
     @keyword
     @except_interop_exception
     def execute_jobs_until_wait_state(
@@ -247,7 +323,7 @@ class TimerKeywords:
         event_name: str = "",
         include_timer_jobs: bool = False,
     ) -> None:
-        """Executes jobs one at a time until a selected wait state appears.
+        Executes jobs one at a time until a selected wait state appears.
 
         Refetches jobs after each execution so jobs created by previous executions
         are also handled.
@@ -269,7 +345,7 @@ class TimerKeywords:
             Execute Jobs Until Wait State    external_task    topic=mail-send
             Execute Jobs Until Wait State    any    max_rounds=50
             Execute Jobs Until Wait State    timer_job    include_timer_jobs=${True}
-        """
+        
         assert self.ctx.engine, "No engine"
         effective_id = process_instance_id or self.ctx._current_instance_id
         assert (
@@ -321,6 +397,50 @@ class TimerKeywords:
                 break
 
             management.executeJob(next_job_id)
+    """
+
+    @keyword
+    @except_interop_exception
+    def execute_jobs_until_wait_state(
+        self,
+        wait_for: str = "any",
+        process_instance_id: str = "",
+        max_rounds: int = 20,
+        topic: str = "",
+        task_name: str = "",
+        event_name: str = "",
+    ) -> None:
+        """Executes non-timer jobs one at a time until a selected wait state appears.
+
+        Refetches jobs after each execution so jobs created by previous executions
+        are also handled.
+
+        Supported values for ``wait_for`` are:
+        ``any``, ``external_task``, ``user_task``, ``message_subscription``,
+        ``signal_subscription``, ``conditional_subscription``, ``timer_job``.
+
+        Optional filters:
+        - ``topic`` is used with ``external_task``.
+        - ``task_name`` is used with ``user_task``.
+        - ``event_name`` is used with ``message/signal/conditional_subscription``.
+        """
+        effective_id = self._require_process_instance_id(process_instance_id)
+
+        for _ in range(int(max_rounds)):
+            if self._has_wait_state(
+                wait_for,
+                effective_id,
+                topic=str(topic),
+                task_name=str(task_name),
+                event_name=str(event_name),
+            ):
+                return
+
+            next_job_id = self._select_next_non_timer_job_id(effective_id)
+            if not next_job_id:
+                return
+
+            self._execute_job(next_job_id)
 
     @keyword
     @except_interop_exception
