@@ -44,13 +44,10 @@ Execute Jobs Can Be Limited To One
 
 Execute Jobs Until Wait State Stops At User Task
     [Setup]    Setup Process Engine
-    Deploy Resources    ${CURDIR}${/}timer-process.bpmn
-    Set Clock    2025-01-01T00:00:00
-    Start Instance    timer-process
-    Advance Clock    3600000
-    Execute Jobs Until Wait State    user_task    include_timer_jobs=${True}
-    Log Bpmn Execution
-    Should Have Task    timer-fired-task
+    Deploy Resources    ${CURDIR}${/}xor-gateway-process.bpmn
+    Start Instance    xor-gateway-process
+    Execute Jobs Until Wait State    user_task
+    Should Have Task    review-task
     [Teardown]    Run Keywords    Reset Clock    AND    Teardown Process Engine
 
 Execute Jobs Until Wait State Stops At External Task

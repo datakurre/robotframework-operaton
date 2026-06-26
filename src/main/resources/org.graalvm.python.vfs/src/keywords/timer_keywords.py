@@ -15,6 +15,14 @@ class TimerKeywords:
     def _normalize_wait_for(self, wait_for: str) -> str:
         return str(wait_for).strip().lower().replace("-", "_").replace(" ", "_")
 
+    def _require_process_instance_id(self, process_instance_id: str) -> str:
+        assert self.ctx.engine, "No engine"
+        effective_id = process_instance_id or self.ctx._current_instance_id
+        assert (
+            effective_id
+        ), "No process instance id provided and no current instance in scope"
+        return str(effective_id)
+
     def _has_external_task(self, topic: str, process_instance_id: str = "") -> bool:
         """Check if an external task exists for the given topic without locking it."""
         assert self.ctx.engine, "No engine"
@@ -88,7 +96,14 @@ class TimerKeywords:
         }
 
         if normalized == "any":
-            return any(check() for check in checks.values())
+            non_timer_wait_states = (
+                "external_task",
+                "user_task",
+                "message_subscription",
+                "signal_subscription",
+                "conditional_subscription",
+            )
+            return any(checks[name]() for name in non_timer_wait_states)
 
         try:
             return checks[normalized]()
@@ -97,6 +112,51 @@ class TimerKeywords:
             raise AssertionError(
                 f"Unsupported wait_for value '{wait_for}'. Supported values: {supported}"
             )
+
+    def _get_executable_job_ids(self, process_instance_id: str = "") -> list[str]:
+        assert self.ctx.engine, "No engine"
+        management = self.ctx.engine.getManagementService()
+        query = management.createJobQuery().executable()
+        if process_instance_id:
+            query = query.processInstanceId(process_instance_id)
+
+        jobs = query.listPage(0, 50)
+        return [str(jobs.get(i).getId()) for i in range(int(jobs.size()))]
+
+    def _get_ordered_executable_job_ids(
+        self, process_instance_id: str = ""
+    ) -> list[str]:
+        job_ids = self._get_executable_job_ids(process_instance_id)
+        timer_ids = self._get_timer_job_ids(process_instance_id)
+
+        non_timers = [job_id for job_id in job_ids if job_id not in timer_ids]
+        timers = [job_id for job_id in job_ids if job_id in timer_ids]
+        return non_timers + timers
+
+    def _get_timer_job_ids(self, process_instance_id: str = "") -> set[str]:
+        assert self.ctx.engine, "No engine"
+        management = self.ctx.engine.getManagementService()
+        query = management.createJobQuery().timers()
+        if process_instance_id:
+            query = query.processInstanceId(process_instance_id)
+
+        timers = query.list()
+        return {str(timers.get(i).getId()) for i in range(int(timers.size()))}
+
+    def _select_next_non_timer_job_id(self, process_instance_id: str) -> str:
+        job_ids = self._get_executable_job_ids(process_instance_id)
+        timer_ids = self._get_timer_job_ids(process_instance_id)
+
+        for job_id in job_ids:
+            if job_id not in timer_ids:
+                return job_id
+
+        return ""
+
+    def _execute_job(self, job_id: str) -> None:
+        assert self.ctx.engine, "No engine"
+        management = self.ctx.engine.getManagementService()
+        management.executeJob(job_id)
 
     @keyword
     @except_interop_exception
@@ -179,7 +239,6 @@ class TimerKeywords:
         self,
         process_instance_id: str = "",
         max_jobs: int = 0,
-        prioritize_non_timers: bool = True,
     ) -> int:
         """Executes all pending jobs (async continuations, messages, timers) for the instance.
 
@@ -189,8 +248,6 @@ class TimerKeywords:
         Returns the number of jobs executed.
         Set ``max_jobs`` to execute only the first N jobs from the pending batch.
         ``max_jobs=0`` (default) means no limit.
-        With ``prioritize_non_timers=true`` (default), executable non-timer jobs are
-        executed before timer jobs. This helps avoid accidental timer progression.
 
         Example usage in Robot::
 
@@ -198,41 +255,19 @@ class TimerKeywords:
             Execute Jobs    max_jobs=1
         """
         assert self.ctx.engine, "No engine"
-        management = self.ctx.engine.getManagementService()
-        query = management.createJobQuery()
-        effective_id = process_instance_id or self.ctx._current_instance_id
-        if effective_id:
-            query = query.processInstanceId(effective_id)
-        jobs = query.list()
 
-        ordered_job_ids: list[str] = []
-        if prioritize_non_timers:
-            # Fetch timer jobs to identify them and order non-timer jobs first
-            timer_query = management.createJobQuery().timers()
-            if effective_id:
-                timer_query = timer_query.processInstanceId(effective_id)
-            timers = timer_query.list()
-            timer_ids: set[str] = set()
-            for i in range(int(timers.size())):
-                timer_ids.add(str(timers.get(i).getId()))
+        effective_id = process_instance_id or self.ctx._current_instance_id or ""
+        ordered_job_ids = self._get_ordered_executable_job_ids(str(effective_id))
 
-            non_timer_ids: list[str] = []
-            timer_ids_in_order: list[str] = []
-            for i in range(int(jobs.size())):
-                job_id = str(jobs.get(i).getId())
-                if job_id in timer_ids:
-                    timer_ids_in_order.append(job_id)
-                else:
-                    non_timer_ids.append(job_id)
-            ordered_job_ids = non_timer_ids + timer_ids_in_order
-        else:
-            for i in range(int(jobs.size())):
-                ordered_job_ids.append(str(jobs.get(i).getId()))
+        limit = (
+            len(ordered_job_ids)
+            if int(max_jobs) <= 0
+            else min(len(ordered_job_ids), int(max_jobs))
+        )
 
-        count = len(ordered_job_ids)
-        limit = count if int(max_jobs) <= 0 else min(count, int(max_jobs))
         for i in range(limit):
-            management.executeJob(ordered_job_ids[i])
+            self._execute_job(ordered_job_ids[i])
+
         return limit
 
     @keyword
@@ -245,9 +280,8 @@ class TimerKeywords:
         topic: str = "",
         task_name: str = "",
         event_name: str = "",
-        include_timer_jobs: bool = False,
     ) -> None:
-        """Executes jobs one at a time until a selected wait state appears.
+        """Executes non-timer jobs one at a time until a selected wait state appears.
 
         Refetches jobs after each execution so jobs created by previous executions
         are also handled.
@@ -260,117 +294,21 @@ class TimerKeywords:
         - ``topic`` is used with ``external_task``.
         - ``task_name`` is used with ``user_task``.
         - ``event_name`` is used with ``message/signal/conditional_subscription``.
-                - ``include_timer_jobs`` controls whether timer jobs may be executed while waiting.
-                    Default is ``False`` to avoid accidental timer boundary activation.
-
-        Example usage in Robot::
-
-            Execute Jobs Until Wait State    user_task
-            Execute Jobs Until Wait State    external_task    topic=mail-send
-            Execute Jobs Until Wait State    any    max_rounds=50
-            Execute Jobs Until Wait State    timer_job    include_timer_jobs=${True}
         """
-        assert self.ctx.engine, "No engine"
-        effective_id = process_instance_id or self.ctx._current_instance_id
-        assert (
-            effective_id
-        ), "No process instance id provided and no current instance in scope"
+        effective_id = self._require_process_instance_id(process_instance_id)
 
-        rounds = int(max_rounds)
-        for _ in range(rounds):
+        for _ in range(int(max_rounds)):
             if self._has_wait_state(
                 wait_for,
-                str(effective_id),
+                effective_id,
                 topic=str(topic),
                 task_name=str(task_name),
                 event_name=str(event_name),
             ):
-                break
+                return
 
-            management = self.ctx.engine.getManagementService()
-            query = (
-                management.createJobQuery()
-                .executable()
-                .processInstanceId(str(effective_id))
-            )
-
-            jobs = query.listPage(0, 50)
-            if int(jobs.size()) == 0:
-                break
-
-            timer_ids: set[str] = set()
-            if not include_timer_jobs:
-                timer_query = (
-                    management.createJobQuery()
-                    .timers()
-                    .processInstanceId(str(effective_id))
-                )
-                timers = timer_query.list()
-                for i in range(int(timers.size())):
-                    timer_ids.add(str(timers.get(i).getId()))
-
-            next_job_id = ""
-            for i in range(int(jobs.size())):
-                candidate_id = str(jobs.get(i).getId())
-                if candidate_id in timer_ids:
-                    continue
-                next_job_id = candidate_id
-                break
-
+            next_job_id = self._select_next_non_timer_job_id(effective_id)
             if not next_job_id:
-                break
+                return
 
-            management.executeJob(next_job_id)
-
-    @keyword
-    @except_interop_exception
-    def complete_external_task_and_execute_jobs(
-        self,
-        topic: str,
-        process_instance_id: str = "",
-        worker_id: str = "robot-worker",
-        execute_jobs_before: bool = True,
-        execute_jobs_after: bool = True,
-        **variables: VariableValue,
-    ) -> None:
-        """Completes one external task for the given topic and executes pending jobs before and after."""
-        assert self.ctx.engine, "No engine"
-
-        instance_id = process_instance_id or self.ctx._current_instance_id
-        assert (
-            instance_id
-        ), "No process instance id provided and no current instance in scope"
-
-        # Complete async-before jobs etc.
-        if execute_jobs_before:
-            self.execute_jobs(instance_id)
-
-        external_task_service = self.ctx.engine.getExternalTaskService()
-        fetch_and_lock = external_task_service.fetchAndLock(1, worker_id).topic(
-            topic, 1000
-        )
-        tasks = fetch_and_lock.execute()
-
-        matching_task = None
-        task_count = int(tasks.size())
-        for i in range(task_count):
-            task = tasks.get(i)
-            if str(task.getProcessInstanceId()) == str(instance_id):
-                matching_task = task
-                break
-
-        assert (
-            matching_task
-        ), f"No external task found for topic '{topic}' in process instance {instance_id}"
-
-        if variables:
-            var_map = Variables.createVariables()
-            for var_name, value in variables.items():
-                var_map.putValue(var_name, value)
-            external_task_service.complete(matching_task.getId(), worker_id, var_map)
-        else:
-            external_task_service.complete(matching_task.getId(), worker_id)
-
-        # Complete async-after jobs etc.
-        if execute_jobs_after:
-            self.execute_jobs(instance_id)
+            self._execute_job(next_job_id)
