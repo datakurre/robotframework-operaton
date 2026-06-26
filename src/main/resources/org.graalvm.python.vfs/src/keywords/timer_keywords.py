@@ -114,6 +114,7 @@ class TimerKeywords:
             )
 
     def _get_executable_job_ids(self, process_instance_id: str = "") -> list[str]:
+        assert self.ctx.engine, "No engine"
         management = self.ctx.engine.getManagementService()
         query = management.createJobQuery().executable()
         if process_instance_id:
@@ -133,6 +134,7 @@ class TimerKeywords:
         return non_timers + timers
 
     def _get_timer_job_ids(self, process_instance_id: str = "") -> set[str]:
+        assert self.ctx.engine, "No engine"
         management = self.ctx.engine.getManagementService()
         query = management.createJobQuery().timers()
         if process_instance_id:
@@ -152,6 +154,7 @@ class TimerKeywords:
         return ""
 
     def _execute_job(self, job_id: str) -> None:
+        assert self.ctx.engine, "No engine"
         management = self.ctx.engine.getManagementService()
         management.executeJob(job_id)
 
