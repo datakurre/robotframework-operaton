@@ -1,5 +1,6 @@
 from robot.api.deco import keyword
 from pathlib import Path
+from collections.abc import Iterable
 from typing import Callable, Protocol, cast
 
 import os
@@ -442,14 +443,14 @@ class Operaton(DynamicCore):
     def _is_java_date(self, value: object) -> bool:
         JavaDate = java.type("java.util.Date")
         try:
-            return isinstance(value, JavaDate)
+            return isinstance(value, cast(type[object], JavaDate))
         except TypeError:
             return bool(JavaDate.isInstance(value))
 
     def _is_java_collection(self, value: object) -> bool:
         JavaCollection = java.type("java.util.Collection")
         try:
-            return isinstance(value, JavaCollection)
+            return isinstance(value, cast(type[object], JavaCollection))
         except TypeError:
             return bool(JavaCollection.isInstance(value))
 
@@ -458,14 +459,18 @@ class Operaton(DynamicCore):
             return set()
         if isinstance(date_variables, str):
             return {name.strip() for name in date_variables.split(",") if name.strip()}
-        return {str(name).strip() for name in date_variables if str(name).strip()}
+        if isinstance(date_variables, Iterable):
+            return {str(name).strip() for name in date_variables if str(name).strip()}
+        return {str(date_variables).strip()} if str(date_variables).strip() else set()
 
     def _list_variable_names(self, list_variables: object) -> set[str]:
         if list_variables is None:
             return set()
         if isinstance(list_variables, str):
             return {name.strip() for name in list_variables.split(",") if name.strip()}
-        return {str(name).strip() for name in list_variables if str(name).strip()}
+        if isinstance(list_variables, Iterable):
+            return {str(name).strip() for name in list_variables if str(name).strip()}
+        return {str(list_variables).strip()} if str(list_variables).strip() else set()
 
     def _to_java_list(self, value: object) -> InteropObject:
         ArrayList = java.type("java.util.ArrayList")

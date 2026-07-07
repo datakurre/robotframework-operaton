@@ -1,5 +1,5 @@
 from robot.api.deco import keyword
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from keywords.base import Variables, VariableValue, java, except_interop_exception
 
@@ -116,7 +116,7 @@ class ExternalTaskKeywords:
             for var_name, value in variables.items():
                 if var_name in date_names and not self.ctx._is_java_date(value):
                     value = sdf.parse(str(value))
-                value = self.ctx._to_process_variable_value(value)
+                value = cast(VariableValue, self.ctx._to_process_variable_value(value))
                 var_map.putValue(var_name, value)
             external_task_service.complete(matching_task.getId(), worker_id, var_map)
         else:
