@@ -1,5 +1,6 @@
 from robot.api.deco import keyword
 from pathlib import Path
+from collections.abc import Iterable
 from typing import Callable, Protocol, cast
 
 import os
@@ -25,6 +26,7 @@ from keywords.timer_keywords import TimerKeywords
 from keywords.external_task_keywords import ExternalTaskKeywords
 from keywords.bpmn_keywords import BpmnKeywords
 from keywords.form_keywords import FormKeywords
+from keywords.identity_keywords import IdentityKeywords
 
 ProcessEngineConfiguration: InteropObject = java.type(
     "org.operaton.bpm.engine.ProcessEngineConfiguration"
@@ -215,6 +217,7 @@ class Operaton(DynamicCore):
             ExternalTaskKeywords(self),
             BpmnKeywords(self),
             FormKeywords(self),
+            IdentityKeywords(self),
         ]
         DynamicCore.__init__(self, components)
 
@@ -411,6 +414,9 @@ class Operaton(DynamicCore):
         """
         Spin = java.type("org.operaton.spin.Spin")
 
+        if self._is_java_date(value) or self._is_java_collection(value):
+            return value
+
         if isinstance(value, str):
             stripped = value.strip()
             # if the string looks like JSON, try to parse and wrap as Spin JSON
@@ -433,6 +439,95 @@ class Operaton(DynamicCore):
 
         # primitive values are returned unchanged
         return value
+
+    def _is_java_date(self, value: object) -> bool:
+        JavaDate = java.type("java.util.Date")
+        try:
+            return isinstance(value, cast(type[object], JavaDate))
+        except TypeError:
+            return bool(JavaDate.isInstance(value))
+
+    def _is_java_collection(self, value: object) -> bool:
+        JavaCollection = java.type("java.util.Collection")
+        try:
+            return isinstance(value, cast(type[object], JavaCollection))
+        except TypeError:
+            return bool(JavaCollection.isInstance(value))
+
+    def _date_variable_names(self, date_variables: object) -> set[str]:
+        if date_variables is None:
+            return set()
+        if isinstance(date_variables, str):
+            return {name.strip() for name in date_variables.split(",") if name.strip()}
+        if isinstance(date_variables, Iterable):
+            return {str(name).strip() for name in date_variables if str(name).strip()}
+        return {str(date_variables).strip()} if str(date_variables).strip() else set()
+
+    def _list_variable_names(self, list_variables: object) -> set[str]:
+        if list_variables is None:
+            return set()
+        if isinstance(list_variables, str):
+            return {name.strip() for name in list_variables.split(",") if name.strip()}
+        if isinstance(list_variables, Iterable):
+            return {str(name).strip() for name in list_variables if str(name).strip()}
+        return {str(list_variables).strip()} if str(list_variables).strip() else set()
+
+    def _to_java_list(self, value: object) -> InteropObject:
+        ArrayList = java.type("java.util.ArrayList")
+        result = ArrayList()
+
+        if isinstance(value, str):
+            stripped = value.strip()
+            if not stripped:
+                return result
+            try:
+                parsed = json.loads(stripped)
+            except Exception:
+                parsed = [stripped]
+        else:
+            parsed = value
+
+        if parsed is None:
+            return result
+        if isinstance(parsed, (list, tuple)):
+            for item in parsed:
+                result.add(item)
+        else:
+            result.add(parsed)
+        return result
+
+    def _resolve_business_key(self, business_key: str) -> str:
+        return business_key if business_key else str(uuid.uuid4())
+
+    def _set_current_instance_scope(self, instance_id: str, business_key: str) -> str:
+        self._current_instance_id = instance_id
+        self._current_business_key = business_key
+        return self._current_instance_id
+
+    def _build_instance_variable_map(
+        self,
+        variables: dict[str, VariableValue],
+        date_variables: object = "",
+        date_pattern: str = "dd.MM.yyyy",
+        list_variables: object = "",
+    ) -> InteropObject:
+        date_names = self._date_variable_names(date_variables)
+        list_names = self._list_variable_names(list_variables)
+        missing_variables = date_names.union(list_names).difference(variables.keys())
+        assert not missing_variables, (
+            "Special variables were requested but not provided: "
+            f"{sorted(missing_variables)}"
+        )
+
+        sdf = java.type("java.text.SimpleDateFormat")(date_pattern)
+        var_map = Variables.createVariables()
+        for name, value in variables.items():
+            if name in date_names and not self._is_java_date(value):
+                value = sdf.parse(str(value))
+            if name in list_names:
+                value = self._to_java_list(value)
+            var_map.putValue(name, self._to_process_variable_value(value))
+        return var_map
 
     @keyword
     @except_interop_exception
@@ -468,6 +563,43 @@ class Operaton(DynamicCore):
     def get_current_instance(self) -> str:
         """Returns the ID of the current process instance set by the last Start Instance call."""
         return self._current_instance_id
+
+    @keyword
+    @except_interop_exception
+    def get_child_instance(
+        self, process_instance_id: str = "", process_definition_key: str = ""
+    ) -> str:
+        """Returns the active child process instance ID for a parent instance.
+
+        Defaults to the current instance in scope when process_instance_id is omitted.
+        Optionally filter by child process_definition_key when multiple call activities
+        could create children.
+        """
+        assert self.engine, "No engine"
+        parent_instance_id = self._resolve_instance_id(process_instance_id)
+        runtime = self.engine.getRuntimeService()
+        query = runtime.createProcessInstanceQuery().superProcessInstanceId(
+            parent_instance_id
+        )
+        if process_definition_key:
+            query = query.processDefinitionKey(process_definition_key)
+
+        children = query.list()
+        count = int(children.size())
+        assert count > 0, (
+            f"No active child process instance found for parent '{parent_instance_id}'"
+            + (
+                f" and process definition key '{process_definition_key}'"
+                if process_definition_key
+                else ""
+            )
+        )
+        assert count == 1, (
+            f"Expected exactly 1 active child process instance for parent "
+            f"'{parent_instance_id}', but found {count}. Pass process_definition_key "
+            f"to disambiguate."
+        )
+        return str(children.get(0).getId())
 
     @keyword
     @except_interop_exception
@@ -572,6 +704,28 @@ class Operaton(DynamicCore):
             task_service.complete(task.getId(), var_map)
         else:
             task_service.complete(task.getId())
+
+    @keyword
+    @except_interop_exception
+    def claim_task(
+        self, name: str = "", user_id: str = "", process_instance_id: str = ""
+    ) -> None:
+        """Claims an active user task for *user_id*.
+
+        The task may be identified by definition key or human-readable name. Defaults
+        to the current process instance.
+        """
+        assert self.engine, "No engine"
+        assert user_id, "user_id is required"
+        instance_id = self._resolve_instance_id(process_instance_id)
+        resolved_key = self._resolve_task_key(instance_id, name)
+        task_service = self.engine.getTaskService()
+        query = task_service.createTaskQuery().processInstanceId(instance_id)
+        if resolved_key:
+            query = query.taskDefinitionKey(resolved_key)
+        task = query.singleResult()
+        assert task, f"No task found for instance {instance_id}"
+        task_service.claim(task.getId(), user_id)
 
     @keyword
     @except_interop_exception
@@ -687,8 +841,7 @@ class Operaton(DynamicCore):
         If *business_key* is not provided, a UUID4 is generated automatically.
         """
         assert self.engine, "No engine"
-        if not business_key:
-            business_key = str(uuid.uuid4())
+        business_key = self._resolve_business_key(business_key)
         runtime = self.engine.getRuntimeService()
         if variables:
             var_map = Variables.createVariables()
@@ -703,9 +856,7 @@ class Operaton(DynamicCore):
             )
         assert assertThat is not None
         assertThat(instance).isStarted()
-        self._current_instance_id = str(instance.getId())
-        self._current_business_key = business_key
-        return self._current_instance_id
+        return self._set_current_instance_scope(str(instance.getId()), business_key)
 
     @keyword
     @except_interop_exception
@@ -716,6 +867,9 @@ class Operaton(DynamicCore):
         activity_id: str,
         business_key: str = "",
         user_id: str = "",
+        date_variables: str = "",
+        date_pattern: str = "dd.MM.yyyy",
+        list_variables: str = "",
         **variables: VariableValue,
     ) -> str:
         """Starts a process instance and places the token immediately before *activity_id*.
@@ -725,17 +879,20 @@ class Operaton(DynamicCore):
         the current instance in scope.
         """
         assert self.engine, "No engine"
-        if not business_key:
-            business_key = str(uuid.uuid4())
+        business_key = self._resolve_business_key(business_key)
         runtime = self.engine.getRuntimeService()
         builder = runtime.createProcessInstanceByKey(
             process_definition_key
         ).businessKey(business_key)
         if variables:
-            var_map = Variables.createVariables()
-            for name, value in variables.items():
-                var_map.putValue(name, self._to_process_variable_value(value))
-            builder = builder.setVariables(var_map)
+            builder = builder.setVariables(
+                self._build_instance_variable_map(
+                    variables,
+                    date_variables=date_variables,
+                    date_pattern=date_pattern,
+                    list_variables=list_variables,
+                )
+            )
 
         resolved_activity_id = self._resolve_activity_id(
             process_definition_key, activity_id
@@ -745,11 +902,7 @@ class Operaton(DynamicCore):
             f"Engine returned no instance for activity '{resolved_activity_id}' "
             f"in process '{process_definition_key}'"
         )
-        instance_id = str(started.getId())
-
-        self._current_instance_id = instance_id
-        self._current_business_key = business_key
-        return self._current_instance_id
+        return self._set_current_instance_scope(str(started.getId()), business_key)
 
     @keyword
     @except_interop_exception

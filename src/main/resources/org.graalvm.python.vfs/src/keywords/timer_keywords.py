@@ -312,3 +312,68 @@ class TimerKeywords:
                 return
 
             self._execute_job(next_job_id)
+
+    @keyword
+    @except_interop_exception
+    def execute_timer_job(self, job_id: str, process_instance_id: str = "") -> None:
+        """Executes a single timer job by its internal Operaton job ID (a UUID-like string).
+
+        This is the engine-assigned job ID, not the BPMN element ID. To find jobs by
+        their BPMN activity/element ID (e.g. ``Event_0lg2rf8``), use
+        ``Execute Timer Job By Activity`` instead.
+
+        Optionally specify a process instance to verify the job belongs to that instance.
+
+        Raises an assertion error if the job is not found.
+
+        Example usage in Robot::
+
+            Execute Timer Job    ${job_id}
+            Execute Timer Job    ${job_id}    ${instance_id}
+        """
+        assert self.ctx.engine, "No engine"
+        management = self.ctx.engine.getManagementService()
+
+        query = management.createJobQuery().jobId(str(job_id))
+        if process_instance_id:
+            query = query.processInstanceId(str(process_instance_id))
+
+        job = query.singleResult()
+        assert job is not None, f"No timer job found with ID '{job_id}'"
+
+        self._execute_job(str(job.getId()))
+
+    @keyword
+    @except_interop_exception
+    def execute_timer_job_by_activity(
+        self, activity_id: str, process_instance_id: str = ""
+    ) -> None:
+        """Executes a single timer job by its BPMN activity/element ID.
+
+        Use this when you know the BPMN element ID from the process model
+        (e.g. ``Event_0lg2rf8``). The job is force-executed regardless of whether
+        its due date has passed — no clock manipulation needed.
+
+        Defaults to the current instance in scope if one exists;
+        pass ``process_instance_id`` to target a specific instance explicitly.
+
+        Raises an assertion error if no matching timer job is found.
+
+        Example usage in Robot::
+
+            Execute Timer Job By Activity    Event_0lg2rf8
+            Execute Timer Job By Activity    Event_0lg2rf8    ${instance_id}
+        """
+        assert self.ctx.engine, "No engine"
+        management = self.ctx.engine.getManagementService()
+
+        query = management.createJobQuery().timers().activityId(str(activity_id))
+
+        effective_id = process_instance_id or self.ctx._current_instance_id
+        if effective_id:
+            query = query.processInstanceId(str(effective_id))
+
+        job = query.singleResult()
+        assert job is not None, f"No timer job found with activity ID '{activity_id}'"
+
+        self._execute_job(str(job.getId()))

@@ -1,7 +1,7 @@
 from robot.api.deco import keyword
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
-from keywords.base import Variables, VariableValue, except_interop_exception
+from keywords.base import Variables, VariableValue, java, except_interop_exception
 
 
 if TYPE_CHECKING:
@@ -74,6 +74,8 @@ class ExternalTaskKeywords:
         topic: str,
         process_instance_id: str = "",
         worker_id: str = "robot-worker",
+        date_variables: str = "",
+        date_pattern: str = "yyyy-MM-dd",
         **variables: VariableValue,
     ) -> None:
         """Fetches, locks, and completes one external task for the given topic in the selected process instance."""
@@ -103,8 +105,18 @@ class ExternalTaskKeywords:
         ), f"No external task found for topic '{topic}' in process instance {instance_id}"
 
         if variables:
+            date_names = self.ctx._date_variable_names(date_variables)
+            sdf = java.type("java.text.SimpleDateFormat")(date_pattern)
+            missing_dates = date_names.difference(variables.keys())
+            assert not missing_dates, (
+                "Date variables were requested but not provided: "
+                f"{sorted(missing_dates)}"
+            )
             var_map = Variables.createVariables()
             for var_name, value in variables.items():
+                if var_name in date_names and not self.ctx._is_java_date(value):
+                    value = sdf.parse(str(value))
+                value = cast(VariableValue, self.ctx._to_process_variable_value(value))
                 var_map.putValue(var_name, value)
             external_task_service.complete(matching_task.getId(), worker_id, var_map)
         else:
