@@ -496,6 +496,39 @@ class Operaton(DynamicCore):
             result.add(parsed)
         return result
 
+    def _resolve_business_key(self, business_key: str) -> str:
+        return business_key if business_key else str(uuid.uuid4())
+
+    def _set_current_instance_scope(self, instance_id: str, business_key: str) -> str:
+        self._current_instance_id = instance_id
+        self._current_business_key = business_key
+        return self._current_instance_id
+
+    def _build_instance_variable_map(
+        self,
+        variables: dict[str, VariableValue],
+        date_variables: object = "",
+        date_pattern: str = "dd.MM.yyyy",
+        list_variables: object = "",
+    ) -> InteropObject:
+        date_names = self._date_variable_names(date_variables)
+        list_names = self._list_variable_names(list_variables)
+        missing_variables = date_names.union(list_names).difference(variables.keys())
+        assert not missing_variables, (
+            "Special variables were requested but not provided: "
+            f"{sorted(missing_variables)}"
+        )
+
+        sdf = java.type("java.text.SimpleDateFormat")(date_pattern)
+        var_map = Variables.createVariables()
+        for name, value in variables.items():
+            if name in date_names and not self._is_java_date(value):
+                value = sdf.parse(str(value))
+            if name in list_names:
+                value = self._to_java_list(value)
+            var_map.putValue(name, self._to_process_variable_value(value))
+        return var_map
+
     @keyword
     @except_interop_exception
     def teardown_process_engine(self) -> None:
@@ -808,8 +841,7 @@ class Operaton(DynamicCore):
         If *business_key* is not provided, a UUID4 is generated automatically.
         """
         assert self.engine, "No engine"
-        if not business_key:
-            business_key = str(uuid.uuid4())
+        business_key = self._resolve_business_key(business_key)
         runtime = self.engine.getRuntimeService()
         if variables:
             var_map = Variables.createVariables()
@@ -824,9 +856,7 @@ class Operaton(DynamicCore):
             )
         assert assertThat is not None
         assertThat(instance).isStarted()
-        self._current_instance_id = str(instance.getId())
-        self._current_business_key = business_key
-        return self._current_instance_id
+        return self._set_current_instance_scope(str(instance.getId()), business_key)
 
     @keyword
     @except_interop_exception
@@ -849,31 +879,20 @@ class Operaton(DynamicCore):
         the current instance in scope.
         """
         assert self.engine, "No engine"
-        if not business_key:
-            business_key = str(uuid.uuid4())
+        business_key = self._resolve_business_key(business_key)
         runtime = self.engine.getRuntimeService()
         builder = runtime.createProcessInstanceByKey(
             process_definition_key
         ).businessKey(business_key)
         if variables:
-            date_names = self._date_variable_names(date_variables)
-            list_names = self._list_variable_names(list_variables)
-            sdf = java.type("java.text.SimpleDateFormat")(date_pattern)
-            missing_variables = date_names.union(list_names).difference(
-                variables.keys()
+            builder = builder.setVariables(
+                self._build_instance_variable_map(
+                    variables,
+                    date_variables=date_variables,
+                    date_pattern=date_pattern,
+                    list_variables=list_variables,
+                )
             )
-            assert not missing_variables, (
-                "Special variables were requested but not provided: "
-                f"{sorted(missing_variables)}"
-            )
-            var_map = Variables.createVariables()
-            for name, value in variables.items():
-                if name in date_names and not self._is_java_date(value):
-                    value = sdf.parse(str(value))
-                if name in list_names:
-                    value = self._to_java_list(value)
-                var_map.putValue(name, self._to_process_variable_value(value))
-            builder = builder.setVariables(var_map)
 
         resolved_activity_id = self._resolve_activity_id(
             process_definition_key, activity_id
@@ -883,11 +902,7 @@ class Operaton(DynamicCore):
             f"Engine returned no instance for activity '{resolved_activity_id}' "
             f"in process '{process_definition_key}'"
         )
-        instance_id = str(started.getId())
-
-        self._current_instance_id = instance_id
-        self._current_business_key = business_key
-        return self._current_instance_id
+        return self._set_current_instance_scope(str(started.getId()), business_key)
 
     @keyword
     @except_interop_exception
