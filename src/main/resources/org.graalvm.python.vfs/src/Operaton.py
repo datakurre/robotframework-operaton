@@ -867,9 +867,9 @@ class Operaton(DynamicCore):
         activity_id: str,
         business_key: str = "",
         user_id: str = "",
-        date_variables: str = "",
+        date_variables: object = "",
         date_pattern: str = "dd.MM.yyyy",
-        list_variables: str = "",
+        list_variables: object = "",
         **variables: VariableValue,
     ) -> str:
         """Starts a process instance and places the token immediately before *activity_id*.

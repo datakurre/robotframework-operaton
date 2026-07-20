@@ -74,7 +74,7 @@ class ExternalTaskKeywords:
         topic: str,
         process_instance_id: str = "",
         worker_id: str = "robot-worker",
-        date_variables: str = "",
+        date_variables: object = "",
         date_pattern: str = "yyyy-MM-dd",
         **variables: VariableValue,
     ) -> None:
