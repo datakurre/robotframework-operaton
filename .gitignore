@@ -3,6 +3,7 @@
 .idea/
 .pre-commit-config.yaml
 .vscode/
+.operaton-scripts/
 /result
 __pycache__/
 dependency-reduced-pom.xml
