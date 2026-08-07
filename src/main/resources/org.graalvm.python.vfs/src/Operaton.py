@@ -53,6 +53,13 @@ except Exception:
     _SpinPlugin = None
 
 try:
+    _CamundaCompatScriptPlugin: InteropObject | None = java.type(
+        "org.operaton.bpm.extension.robot.CamundaCompatScriptPlugin"
+    )
+except Exception:
+    _CamundaCompatScriptPlugin = None
+
+try:
     _VasaraPlugin: InteropObject | None = java.type("fi.jyu.vasara.VasaraPlugin")
 except Exception:
     _VasaraPlugin = None
@@ -233,6 +240,9 @@ class Operaton(DynamicCore):
             # Always register the Spin plugin so JSON/XML serialization is available.
             if _SpinPlugin is not None:
                 config.getProcessEnginePlugins().add(_SpinPlugin())
+            # Enable Camunda JavaScript compatibility shims by default.
+            if _CamundaCompatScriptPlugin is not None:
+                config.getProcessEnginePlugins().add(_CamundaCompatScriptPlugin())
             # When running from the vasara fat JAR, activate Vasara form customizations
             # automatically by classpath-presence of fi.jyu.vasara.VasaraPlugin.
             if _VasaraPlugin is not None:
