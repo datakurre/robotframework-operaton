@@ -613,6 +613,27 @@ class Operaton(DynamicCore):
 
     @keyword
     @except_interop_exception
+    def get_all_child_instances(
+        self, process_instance_id: str = "", process_definition_key: str = ""
+    ) -> list[str]:
+        """Returns a list of all active child process instance IDs for a parent instance."""
+        assert self.engine, "No engine"
+        parent_instance_id = self._resolve_instance_id(process_instance_id)
+        runtime = self.engine.getRuntimeService()
+        query = runtime.createProcessInstanceQuery().superProcessInstanceId(
+            parent_instance_id
+        )
+        if process_definition_key:
+            query = query.processDefinitionKey(process_definition_key)
+
+        children = query.list()
+        result = []
+        for i in range(int(children.size())):
+            result.append(str(children.get(i).getId()))
+        return result
+
+    @keyword
+    @except_interop_exception
     def get_current_business_key(self) -> str:
         """Returns the business key of the current process instance."""
         return self._current_business_key
