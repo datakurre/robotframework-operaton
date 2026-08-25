@@ -1,4 +1,5 @@
 import json
+import xml.etree.ElementTree as ET
 
 from robot.api import logger
 from robot.api.deco import keyword
@@ -303,3 +304,70 @@ class BpmnKeywords:
                 print(
                     f"*WARN* BPMN coverage rendering failed for '{definition}': {exc}"
                 )
+
+    @keyword
+    @except_interop_exception
+    def log_uncovered_bpmn_elements(
+        self, *definitions: str, console: bool = False
+    ) -> None:
+        """Prints executable BPMN flow nodes that were not covered.
+
+        The coverage library exposes covered event IDs but not the complete
+        executable-element list, so the latter is derived from each model's XML.
+        With no definitions, all models known to the active coverage collector
+        are reported.
+        """
+        assert self.ctx.engine, "No engine"
+        collector = getattr(self.ctx, "coverage_collector", None)
+        if collector is None:
+            logger.warn(
+                "Uncovered BPMN elements skipped: the "
+                "operaton-process-test-coverage library is not on the classpath."
+            )
+            return
+
+        suite = collector.getActiveSuite()
+        models = list(collector.getModels())
+        requested = set(definitions)
+        selected_models = [
+            model
+            for model in models
+            if not requested or str(model.getKey()) in requested
+        ]
+
+        lines = ["Uncovered BPMN elements:"]
+        for model in selected_models:
+            definition = str(model.getKey())
+            covered_ids = {
+                str(event.getDefinitionKey())
+                for event in suite.getEvents(definition)
+                if str(event.getSource()) == "FLOW_NODE"
+            }
+            root = ET.fromstring(str(model.getXml()))
+            uncovered = []
+            for element in root.iter():
+                element_type = element.tag.rsplit("}", 1)[-1]
+                if not (
+                    element_type.endswith(("Event", "Gateway", "Task"))
+                    or element_type
+                    in {"activity", "callActivity", "subProcess", "transaction"}
+                ):
+                    continue
+                element_id = element.get("id")
+                if element_id and element_id not in covered_ids:
+                    name = element.get("name")
+                    uncovered.append(f"{element_id} ({name})" if name else element_id)
+
+            if uncovered:
+                lines.append(f"{definition}: {', '.join(uncovered)}")
+            else:
+                lines.append(f"{definition}: none")
+
+        if not selected_models:
+            lines.append("none")
+
+        message = "\n".join(lines)
+        logger.info(message)
+        print(message)
+        if console:
+            print("*CONSOLE*\n" + message)

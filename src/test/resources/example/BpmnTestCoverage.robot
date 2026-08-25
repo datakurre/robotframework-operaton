@@ -23,6 +23,7 @@ Log Bpmn Test Coverage After Partial Execution
     Start Instance    multi-task-process
     Complete Task    task-a
     Log Bpmn Test Coverage    multi-task-process
+    Log Uncovered Bpmn Elements    multi-task-process    console=True
     [Teardown]    Teardown Process Engine
 
 Log Bpmn Test Coverage Renders All Definitions Without Arguments
