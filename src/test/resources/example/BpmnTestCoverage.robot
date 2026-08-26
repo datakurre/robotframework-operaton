@@ -33,6 +33,7 @@ Log Uncovered Bpmn Elements After Untaken Gateway Branch
     Start Instance    xor-gateway-process
     Complete Task    review-task    approved=${False}
     Complete Task    rejected-task
+    Log Bpmn Test Coverage    xor-gateway-process
     Log Uncovered Bpmn Elements    xor-gateway-process    console=True
     [Teardown]    Teardown Process Engine
 

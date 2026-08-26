@@ -275,12 +275,14 @@ class BpmnKeywords:
             bpmn_xml = str(model.getXml())
 
             covered_node_ids = set()
+            covered_paths = set()
             for event in suite.getEvents(definition):
                 if str(event.getSource()) == "FLOW_NODE":
                     covered_node_ids.add(str(event.getDefinitionKey()))
+                elif str(event.getSource()) == "SEQUENCE_FLOW":
+                    covered_paths.add(str(event.getDefinitionKey()))
 
-            # Covered flow nodes are highlighted as completed; sequence flows are
-            # inferred from covered endpoints by the renderer.
+            # Covered flow nodes and taken sequence flows are highlighted directly.
             activities = [
                 {
                     "activityId": node_id,
@@ -292,7 +294,13 @@ class BpmnKeywords:
                 for node_id in covered_node_ids
             ]
 
-            input_json = json.dumps({"bpmn": bpmn_xml, "activities": activities})
+            input_json = json.dumps(
+                {
+                    "bpmn": bpmn_xml,
+                    "activities": activities,
+                    "sequenceFlows": sorted(covered_paths),
+                }
+            )
             try:
                 svg = str(BpmnRenderer.renderSvg(input_json))
                 print(
@@ -353,9 +361,7 @@ class BpmnKeywords:
             executable_nodes: dict[str, ET.Element] = {}
             sequence_flows: list[ET.Element] = []
 
-            def collect_elements(
-                element: ET.Element, executable: bool = False
-            ) -> None:
+            def collect_elements(element: ET.Element, executable: bool = False) -> None:
                 element_type = element.tag.rsplit("}", 1)[-1]
                 if element_type == "process":
                     executable = (
@@ -387,9 +393,7 @@ class BpmnKeywords:
                 for element_id in sorted(element_ids):
                     element = executable_nodes.get(element_id)
                     name = element.get("name") if element is not None else None
-                    formatted.append(
-                        f"{element_id} ({name})" if name else element_id
-                    )
+                    formatted.append(f"{element_id} ({name})" if name else element_id)
                 return ", ".join(formatted) if formatted else "none"
 
             lines.append(

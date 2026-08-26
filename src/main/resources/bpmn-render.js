@@ -24924,7 +24924,14 @@ function buildDOM(html) {
   }
   return { window: window3, document: document2 };
 }
-function getExecutedFlows(elementRegistry, activityHistory) {
+function getExecutedFlows(elementRegistry, activityHistory, sequenceFlows) {
+  // Coverage events identify taken transitions directly. This is important for
+  // gateways: inferring a flow from its endpoints can mark an untaken default
+  // flow as executed when both endpoints were visited on different runs.
+  if (Array.isArray(sequenceFlows)) {
+    return new Set(sequenceFlows);
+  }
+
   const executedIds = new Set(
     activityHistory
       .filter((a) => !a.canceled && a.completed)
@@ -24952,7 +24959,12 @@ function getExecutedFlows(elementRegistry, activityHistory) {
 var EXECUTED_COLOR = "#52B415";
 var ACTIVE_COLOR = "#E67E00";
 var INCIDENT_COLOR = "#CC0000";
-function highlightElements(elementRegistry, activityHistory, document2) {
+function highlightElements(
+  elementRegistry,
+  activityHistory,
+  document2,
+  sequenceFlows,
+) {
   const executedIds = new Set(
     activityHistory
       .filter((a) => !a.canceled && a.completed)
@@ -24966,7 +24978,11 @@ function highlightElements(elementRegistry, activityHistory, document2) {
   const incidentIds = new Set(
     activityHistory.filter((a) => a.incident).map((a) => a.activityId),
   );
-  const executedFlows = getExecutedFlows(elementRegistry, activityHistory);
+  const executedFlows = getExecutedFlows(
+    elementRegistry,
+    activityHistory,
+    sequenceFlows,
+  );
   for (const element of elementRegistry.getAll()) {
     const gfx = elementRegistry.getGraphics(element);
     if (!gfx) continue;
@@ -25043,7 +25059,7 @@ function highlightElements(elementRegistry, activityHistory, document2) {
     }
   }
 }
-async function renderBpmn(bpmnXml, activityHistory) {
+async function renderBpmn(bpmnXml, activityHistory, sequenceFlows) {
   const { window: window3, document: document2 } = buildDOM(
     `<!DOCTYPE html><html><head></head><body><div id="canvas"></div></body></html>`,
   );
@@ -25055,7 +25071,12 @@ async function renderBpmn(bpmnXml, activityHistory) {
   await viewer.importXML(bpmnXml);
   const elementRegistry = viewer.get("elementRegistry");
   if (activityHistory && activityHistory.length > 0) {
-    highlightElements(elementRegistry, activityHistory, document2);
+    highlightElements(
+      elementRegistry,
+      activityHistory,
+      document2,
+      sequenceFlows,
+    );
   }
   let minX = Infinity,
     minY = Infinity,
@@ -25111,13 +25132,13 @@ async function main() {
 `);
     process.exit(1);
   }
-  const { bpmn, activities = [] } = parsed;
+  const { bpmn, activities = [], sequenceFlows } = parsed;
   if (!bpmn) {
     process.stderr.write("bpmn-render: missing 'bpmn' field in input JSON\n");
     process.exit(1);
   }
   try {
-    const svg = await renderBpmn(bpmn, activities);
+    const svg = await renderBpmn(bpmn, activities, sequenceFlows);
     process.stdout.write(svg);
   } catch (e) {
     process.stderr.write(`bpmn-render: rendering failed: ${e.message}
