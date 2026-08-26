@@ -3,11 +3,13 @@ Documentation       Isolates error-end to boundary-event behavior for signing ab
 
 Library             Operaton
 
+Suite Setup         Setup Process Engine
+Suite Teardown      Suite Teardown
+
 
 *** Test Cases ***
 Failure Triggers Boundary Catch
     [Documentation]    Completes the status external task with FAILURE and verifies subprocess error is caught by boundary event.
-    [Setup]    Setup Process Engine
     Deploy Resources    ${CURDIR}${/}error-throw.bpmn
     Start Instance    error-throw-process
 
@@ -17,11 +19,10 @@ Failure Triggers Boundary Catch
     ...    topic=value-enter
 
     Log Bpmn Execution
-    [Teardown]    Teardown Process Engine
+    Log Bpmn Test Coverage    error-throw-process
 
 Success Triggers End Event
     [Documentation]    Completes the status external task with SUCCESS and verifies subprocess end event is reached.
-    [Setup]    Setup Process Engine
     Deploy Resources    ${CURDIR}${/}error-throw.bpmn
     Start Instance    error-throw-process
 
@@ -31,4 +32,10 @@ Success Triggers End Event
     ...    topic=value-enter
 
     Log Bpmn Execution
-    [Teardown]    Teardown Process Engine
+
+
+*** Keywords ***
+Suite Teardown
+    Log Bpmn Test Coverage    error-throw-process
+    Log Uncovered Bpmn Elements    error-throw-process
+    Teardown Process Engine
