@@ -310,10 +310,11 @@ class BpmnKeywords:
     def log_uncovered_bpmn_elements(
         self, *definitions: str, console: bool = False
     ) -> None:
-        """Prints executable BPMN flow nodes that were not covered.
+        """Prints executable BPMN flow nodes and paths that were not covered.
 
         The coverage library exposes covered event IDs but not the complete
-        executable-element list, so the latter is derived from each model's XML.
+        executable-element list, so the latter is derived from each model's XML
+        using the same executable-process rules as the coverage library.
         With no definitions, all models known to the active coverage collector
         are reported.
         """
@@ -338,30 +339,67 @@ class BpmnKeywords:
         lines = ["Uncovered BPMN elements:"]
         for model in selected_models:
             definition = str(model.getKey())
-            covered_ids = {
+            covered_nodes = {
                 str(event.getDefinitionKey())
                 for event in suite.getEvents(definition)
                 if str(event.getSource()) == "FLOW_NODE"
             }
+            covered_paths = {
+                str(event.getDefinitionKey())
+                for event in suite.getEvents(definition)
+                if str(event.getSource()) == "SEQUENCE_FLOW"
+            }
             root = ET.fromstring(str(model.getXml()))
-            uncovered = []
-            for element in root.iter():
-                element_type = element.tag.rsplit("}", 1)[-1]
-                if not (
-                    element_type.endswith(("Event", "Gateway", "Task"))
-                    or element_type
-                    in {"activity", "callActivity", "subProcess", "transaction"}
-                ):
-                    continue
-                element_id = element.get("id")
-                if element_id and element_id not in covered_ids:
-                    name = element.get("name")
-                    uncovered.append(f"{element_id} ({name})" if name else element_id)
+            executable_nodes: dict[str, ET.Element] = {}
+            sequence_flows: list[ET.Element] = []
 
-            if uncovered:
-                lines.append(f"{definition}: {', '.join(uncovered)}")
-            else:
-                lines.append(f"{definition}: none")
+            def collect_elements(
+                element: ET.Element, executable: bool = False
+            ) -> None:
+                element_type = element.tag.rsplit("}", 1)[-1]
+                if element_type == "process":
+                    executable = (
+                        element.get("id") == definition
+                        and element.get("isExecutable", "").lower() == "true"
+                    )
+                elif executable and element_type == "sequenceFlow":
+                    sequence_flows.append(element)
+                elif executable and (
+                    element_type.endswith(("Event", "Gateway", "Task"))
+                    or element_type in {"callActivity", "subProcess", "transaction"}
+                ):
+                    element_id = element.get("id")
+                    if element_id:
+                        executable_nodes[element_id] = element
+
+                for child in element:
+                    collect_elements(child, executable)
+
+            collect_elements(root)
+            executable_paths = {
+                element.get("id")
+                for element in sequence_flows
+                if element.get("id") and element.get("sourceRef") in executable_nodes
+            }
+
+            def format_elements(element_ids: set[str]) -> str:
+                formatted = []
+                for element_id in sorted(element_ids):
+                    element = executable_nodes.get(element_id)
+                    name = element.get("name") if element is not None else None
+                    formatted.append(
+                        f"{element_id} ({name})" if name else element_id
+                    )
+                return ", ".join(formatted) if formatted else "none"
+
+            lines.append(
+                f"{definition} nodes: "
+                f"{format_elements(set(executable_nodes) - covered_nodes)}"
+            )
+            lines.append(
+                f"{definition} paths: "
+                f"{format_elements(executable_paths - covered_paths)}"
+            )
 
         if not selected_models:
             lines.append("none")
