@@ -382,11 +382,11 @@ class BpmnKeywords:
                     collect_elements(child, executable)
 
             collect_elements(root)
-            executable_paths = {
-                element.get("id")
-                for element in sequence_flows
-                if element.get("id") and element.get("sourceRef") in executable_nodes
-            }
+            executable_paths: set[str] = set()
+            for element in sequence_flows:
+                element_id = element.get("id")
+                if element_id and element.get("sourceRef") in executable_nodes:
+                    executable_paths.add(element_id)
 
             def format_elements(element_ids: set[str]) -> str:
                 formatted = []
