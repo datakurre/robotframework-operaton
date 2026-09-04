@@ -424,7 +424,11 @@ class Operaton(DynamicCore):
         """
         Spin = java.type("org.operaton.spin.Spin")
 
-        if self._is_java_date(value) or self._is_java_collection(value):
+        if (
+            self._is_java_date(value)
+            or self._is_java_collection(value)
+            or self._is_java_typed_value(value)
+        ):
             return value
 
         if isinstance(value, str):
@@ -463,6 +467,13 @@ class Operaton(DynamicCore):
             return isinstance(value, cast(type[object], JavaCollection))
         except TypeError:
             return bool(JavaCollection.isInstance(value))
+
+    def _is_java_typed_value(self, value: object) -> bool:
+        JavaTypedValue = java.type("org.operaton.bpm.engine.variable.value.TypedValue")
+        try:
+            return isinstance(value, cast(type[object], JavaTypedValue))
+        except TypeError:
+            return bool(JavaTypedValue.isInstance(value))
 
     def _date_variable_names(self, date_variables: object) -> set[str]:
         if date_variables is None:
@@ -536,7 +547,11 @@ class Operaton(DynamicCore):
                 value = sdf.parse(str(value))
             if name in list_names:
                 value = self._to_java_list(value)
-            var_map.putValue(name, self._to_process_variable_value(value))
+            converted_value = self._to_process_variable_value(value)
+            if self._is_java_typed_value(converted_value):
+                var_map.putValueTyped(name, converted_value)
+            else:
+                var_map.putValue(name, converted_value)
         return var_map
 
     @keyword
