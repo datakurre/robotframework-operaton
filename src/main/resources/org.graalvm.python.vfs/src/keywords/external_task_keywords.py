@@ -34,7 +34,8 @@ class ExternalTaskKeywords:
             and self._is_java_file_value(payload)
             and unwrap_count < 5
         ):
-            payload = cast(object, payload).getValue()  # type: ignore[attr-defined]
+            get_value = getattr(payload, "getValue")
+            payload = get_value()
             unwrap_count += 1
 
         if isinstance(payload, bytes):
@@ -59,7 +60,7 @@ class ExternalTaskKeywords:
         for i in range(int(tasks.size())):
             task = tasks.get(i)
             if str(task.getProcessInstanceId()) == str(instance_id):
-                return task
+                return cast(object, task)
 
         raise AssertionError(
             f"No external task found for topic '{topic}' in process instance {instance_id}"
@@ -248,9 +249,11 @@ class ExternalTaskKeywords:
             var_map = self._build_variable_map(
                 dict(variables), date_variables, date_pattern
             )
-            external_task_service.complete(matching_task.getId(), worker_id, var_map)
+            external_task_service.complete(
+                getattr(matching_task, "getId")(), worker_id, var_map
+            )
         else:
-            external_task_service.complete(matching_task.getId(), worker_id)
+            external_task_service.complete(getattr(matching_task, "getId")(), worker_id)
 
     @keyword
     @except_interop_exception
