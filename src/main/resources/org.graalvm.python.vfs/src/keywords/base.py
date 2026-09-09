@@ -1,8 +1,10 @@
 from functools import wraps
 from collections.abc import Iterator
-from typing import Callable, ParamSpec, Protocol, TypeVar
+from typing import Callable, ParamSpec, Protocol, TypeVar, cast
 
+import base64
 import inspect
+import json
 import sys
 
 
@@ -38,12 +40,15 @@ else:
 
 __all__ = [
     "InteropObject",
+    "BoundaryValue",
     "Variables",
     "VariableValue",
     "DmnValue",
     "ScalarValue",
     "NativeValue",
     "except_interop_exception",
+    "wrap_boundary_value",
+    "unwrap_boundary_value",
     "with_authenticated_user",
     "java",
 ]
@@ -51,6 +56,81 @@ __all__ = [
 
 class _RobotLogger(Protocol):
     def debug(self, message: str) -> None: ...
+
+
+class BoundaryValue(str):
+    _PREFIX = "__operaton_boundary__:"
+
+    def __new__(cls, kind: str, value: InteropObject) -> "BoundaryValue":
+        if kind == "date":
+            payload = {"millis": int(value.getTime())}
+        elif kind == "file":
+            payload = {
+                "filename": str(value.getFilename()),
+                "mime_type": str(value.getMimeType()),
+                "content": base64.b64encode(
+                    bytes(value.getValue().readAllBytes())
+                ).decode("ascii"),
+            }
+        else:
+            payload = {"type": type(value).__name__}
+        return str.__new__(
+            cls,
+            cls._PREFIX + kind + ":" + json.dumps(payload, separators=(",", ":")),
+        )
+
+
+def _is_java(class_name: str, value: object) -> bool:
+    java_class = java.type(class_name)
+    try:
+        return isinstance(value, cast(type[object], java_class))
+    except TypeError:
+        return bool(java_class.isInstance(value))
+
+
+def wrap_boundary_value(value: object) -> object:
+    if isinstance(value, BoundaryValue):
+        return value
+    if isinstance(value, list):
+        return [wrap_boundary_value(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(wrap_boundary_value(item) for item in value)
+    if isinstance(value, dict):
+        return {key: wrap_boundary_value(item) for key, item in value.items()}
+    if value is None or isinstance(value, (str, int, float, bool, bytes)):
+        return value
+    if _is_java("java.util.Date", value):
+        return BoundaryValue("date", cast(InteropObject, value))
+    if _is_java("org.operaton.bpm.engine.variable.value.FileValue", value):
+        return BoundaryValue("file", cast(InteropObject, value))
+    if _is_java("java.lang.Object", value):
+        return BoundaryValue("unsupported", cast(InteropObject, value))
+    return value
+
+
+def unwrap_boundary_value(value: object) -> object:
+    if isinstance(value, str) and value.startswith(BoundaryValue._PREFIX):
+        _, kind, encoded = value.split(":", 2)
+        payload = json.loads(encoded)
+        if kind == "date":
+            return java.type("java.util.Date")(int(payload["millis"]))
+        if kind == "file":
+            content = base64.b64decode(str(payload["content"]))
+            return cast(
+                InteropObject,
+                Variables.fileValue(str(payload["filename"]))
+                .file(content)
+                .mimeType(str(payload["mime_type"]))
+                .create(),
+            )
+        raise TypeError(f"Unsupported Java value crossing Robot boundary: {payload}")
+    if isinstance(value, list):
+        return [unwrap_boundary_value(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(unwrap_boundary_value(item) for item in value)
+    if isinstance(value, dict):
+        return {key: unwrap_boundary_value(item) for key, item in value.items()}
+    return value
 
 
 try:
@@ -114,7 +194,14 @@ def except_interop_exception(func: Callable[P, R]) -> Callable[P, R]:
     @wraps(func)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         try:
-            return func(*args, **kwargs)
+            unwrapped_args = tuple(unwrap_boundary_value(value) for value in args)
+            unwrapped_kwargs = {
+                key: unwrap_boundary_value(value) for key, value in kwargs.items()
+            }
+            return cast(
+                R,
+                wrap_boundary_value(func(*unwrapped_args, **unwrapped_kwargs)),
+            )
         except BaseException as exc:
             message = _interop_message(exc)
             try:

@@ -1,7 +1,13 @@
 from robot.api.deco import keyword
 from typing import TYPE_CHECKING, cast
 
-from keywords.base import Variables, VariableValue, java, except_interop_exception
+from keywords.base import (
+    Variables,
+    VariableValue,
+    except_interop_exception,
+    java,
+    unwrap_boundary_value,
+)
 
 
 if TYPE_CHECKING:
@@ -55,6 +61,7 @@ class ExternalTaskKeywords:
 
         var_map = Variables.createVariables()
         for var_name, value in variables.items():
+            value = unwrap_boundary_value(value)
             if var_name in date_names and not self.ctx._is_java_date(value):
                 value = sdf.parse(str(value))
             value = cast(VariableValue, self.ctx._to_process_variable_value(value))
@@ -127,6 +134,7 @@ class ExternalTaskKeywords:
         if variables:
             var_map = Variables.createVariables()
             for name, value in variables.items():
+                value = unwrap_boundary_value(value)
                 converted_value = cast(
                     VariableValue, self.ctx._to_process_variable_value(value)
                 )

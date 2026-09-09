@@ -196,6 +196,12 @@ By default the CPython proxy spawns a fresh JVM for every test run (~20–30 s).
 For rapid edit-run cycles, keep one Remote server running and point the proxy
 at it — each **Run Test** then connects instantly.
 
+Java values returned by keywords are normalized at the shared keyword boundary.
+Supported values such as Operaton `FileValue` and Java dates cross Robot
+variables as Python-native descriptors and are reconstructed before the next
+keyword call. Unsupported Java objects are rejected when they are consumed
+instead of being silently stringified.
+
 #### Option A: VS Code Command (recommended)
 
 Use the **[vscode-operaton-robotframework](https://gitlab.com/vasara-bpm/vscode-operaton-robotframework)** companion extension:
