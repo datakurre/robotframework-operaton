@@ -3,7 +3,8 @@
  *
  * Reads JSON from stdin:
  *   { "bpmn": "<xml>", "activities": [ { "activityId": "...", "activityType": "...",
- *                                         "canceled": false, "completed": true }, ... ] }
+ *                                         "canceled": false, "completed": true }, ... ],
+ *     "sequenceFlows": [ "flow-id", ... ] }
  *
  * Writes SVG to stdout.
  * Errors are written to stderr and process exits with code 1.
@@ -252,12 +253,21 @@ function buildDOM(html) {
  * Determine which sequence flow IDs were executed, based on activity history.
  *
  * Algorithm (simplified from datakurre/operaton-cockpit-plugins connections.ts):
- *  - A sequence flow is "executed" if both its source and target activities appear
- *    in the executed activity set.
+ *  - When sequenceFlows are supplied, they are the authoritative list of taken
+ *    flows (as reported by the coverage collector).
+ *  - Otherwise, a sequence flow is "executed" if both its source and target
+ *    activities appear in the executed activity set.
  *  - For exclusive gateways: only the flow whose target was executed is marked.
  *  - Canceled activities are excluded from the executed set.
  */
-function getExecutedFlows(elementRegistry, activityHistory) {
+function getExecutedFlows(elementRegistry, activityHistory, sequenceFlows) {
+  // Coverage events identify taken transitions directly. This is important for
+  // gateways: inferring a flow from its endpoints can mark an untaken default
+  // flow as executed when both endpoints were visited on different runs.
+  if (Array.isArray(sequenceFlows)) {
+    return new Set(sequenceFlows);
+  }
+
   const executedIds = new Set(
     activityHistory
       .filter((a) => !a.canceled && a.completed)
@@ -294,7 +304,12 @@ const EXECUTED_COLOR = "#52B415"; // green — same as operaton-cockpit-plugins
 const ACTIVE_COLOR = "#E67E00"; // orange for currently active activities
 const INCIDENT_COLOR = "#CC0000"; // red for activities with incidents
 
-function highlightElements(elementRegistry, activityHistory, document) {
+function highlightElements(
+  elementRegistry,
+  activityHistory,
+  document,
+  sequenceFlows,
+) {
   const executedIds = new Set(
     activityHistory
       .filter((a) => !a.canceled && a.completed)
@@ -308,7 +323,11 @@ function highlightElements(elementRegistry, activityHistory, document) {
   const incidentIds = new Set(
     activityHistory.filter((a) => a.incident).map((a) => a.activityId),
   );
-  const executedFlows = getExecutedFlows(elementRegistry, activityHistory);
+  const executedFlows = getExecutedFlows(
+    elementRegistry,
+    activityHistory,
+    sequenceFlows,
+  );
 
   for (const element of elementRegistry.getAll()) {
     const gfx = elementRegistry.getGraphics(element);
@@ -395,7 +414,7 @@ function highlightElements(elementRegistry, activityHistory, document) {
 
 // ─── SVG highlighting ─────────────────────────────────────────────────────────
 
-async function renderBpmn(bpmnXml, activityHistory) {
+async function renderBpmn(bpmnXml, activityHistory, sequenceFlows) {
   const { window, document } = buildDOM(
     `<!DOCTYPE html><html><head></head><body><div id="canvas"></div></body></html>`,
   );
@@ -415,7 +434,12 @@ async function renderBpmn(bpmnXml, activityHistory) {
 
   // Apply highlighting before export
   if (activityHistory && activityHistory.length > 0) {
-    highlightElements(elementRegistry, activityHistory, document);
+    highlightElements(
+      elementRegistry,
+      activityHistory,
+      document,
+      sequenceFlows,
+    );
   }
 
   // Fix element transforms (bpmn-js uses SVGTransformList.baseVal, not setAttribute)
@@ -483,14 +507,14 @@ async function main() {
     process.exit(1);
   }
 
-  const { bpmn, activities = [] } = parsed;
+  const { bpmn, activities = [], sequenceFlows } = parsed;
   if (!bpmn) {
     process.stderr.write("bpmn-render: missing 'bpmn' field in input JSON\n");
     process.exit(1);
   }
 
   try {
-    const svg = await renderBpmn(bpmn, activities);
+    const svg = await renderBpmn(bpmn, activities, sequenceFlows);
     process.stdout.write(svg);
   } catch (e) {
     process.stderr.write(

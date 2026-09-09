@@ -23,6 +23,18 @@ Log Bpmn Test Coverage After Partial Execution
     Start Instance    multi-task-process
     Complete Task    task-a
     Log Bpmn Test Coverage    multi-task-process
+    Log Uncovered Bpmn Elements    multi-task-process    console=True
+    [Teardown]    Teardown Process Engine
+
+Log Uncovered Bpmn Elements After Untaken Gateway Branch
+    [Documentation]    Reports a path and nodes from the unselected XOR branch.
+    [Setup]    Setup Process Engine
+    Deploy Resources    ${CURDIR}${/}xor-gateway-process.bpmn
+    Start Instance    xor-gateway-process
+    Complete Task    review-task    approved=${False}
+    Complete Task    rejected-task
+    Log Bpmn Test Coverage    xor-gateway-process
+    Log Uncovered Bpmn Elements    xor-gateway-process    console=True
     [Teardown]    Teardown Process Engine
 
 Log Bpmn Test Coverage Renders All Definitions Without Arguments

@@ -1,4 +1,5 @@
 import json
+import xml.etree.ElementTree as ET
 
 from robot.api import logger
 from robot.api.deco import keyword
@@ -274,12 +275,14 @@ class BpmnKeywords:
             bpmn_xml = str(model.getXml())
 
             covered_node_ids = set()
+            covered_paths = set()
             for event in suite.getEvents(definition):
                 if str(event.getSource()) == "FLOW_NODE":
                     covered_node_ids.add(str(event.getDefinitionKey()))
+                elif str(event.getSource()) == "SEQUENCE_FLOW":
+                    covered_paths.add(str(event.getDefinitionKey()))
 
-            # Covered flow nodes are highlighted as completed; sequence flows are
-            # inferred from covered endpoints by the renderer.
+            # Covered flow nodes and taken sequence flows are highlighted directly.
             activities = [
                 {
                     "activityId": node_id,
@@ -291,7 +294,13 @@ class BpmnKeywords:
                 for node_id in covered_node_ids
             ]
 
-            input_json = json.dumps({"bpmn": bpmn_xml, "activities": activities})
+            input_json = json.dumps(
+                {
+                    "bpmn": bpmn_xml,
+                    "activities": activities,
+                    "sequenceFlows": sorted(covered_paths),
+                }
+            )
             try:
                 svg = str(BpmnRenderer.renderSvg(input_json))
                 print(
@@ -303,3 +312,104 @@ class BpmnKeywords:
                 print(
                     f"*WARN* BPMN coverage rendering failed for '{definition}': {exc}"
                 )
+
+    @keyword
+    @except_interop_exception
+    def log_uncovered_bpmn_elements(
+        self, *definitions: str, console: bool = False
+    ) -> None:
+        """Prints executable BPMN flow nodes and paths that were not covered.
+
+        The coverage library exposes covered event IDs but not the complete
+        executable-element list, so the latter is derived from each model's XML
+        using the same executable-process rules as the coverage library.
+        With no definitions, all models known to the active coverage collector
+        are reported.
+        """
+        assert self.ctx.engine, "No engine"
+        collector = getattr(self.ctx, "coverage_collector", None)
+        if collector is None:
+            logger.warn(
+                "Uncovered BPMN elements skipped: the "
+                "operaton-process-test-coverage library is not on the classpath."
+            )
+            return
+
+        suite = collector.getActiveSuite()
+        models = list(collector.getModels())
+        requested = set(definitions)
+        selected_models = [
+            model
+            for model in models
+            if not requested or str(model.getKey()) in requested
+        ]
+
+        lines = ["Uncovered BPMN elements:"]
+        for model in selected_models:
+            definition = str(model.getKey())
+            covered_nodes = {
+                str(event.getDefinitionKey())
+                for event in suite.getEvents(definition)
+                if str(event.getSource()) == "FLOW_NODE"
+            }
+            covered_paths = {
+                str(event.getDefinitionKey())
+                for event in suite.getEvents(definition)
+                if str(event.getSource()) == "SEQUENCE_FLOW"
+            }
+            root = ET.fromstring(str(model.getXml()))
+            executable_nodes: dict[str, ET.Element] = {}
+            sequence_flows: list[ET.Element] = []
+
+            def collect_elements(element: ET.Element, executable: bool = False) -> None:
+                element_type = element.tag.rsplit("}", 1)[-1]
+                if element_type == "process":
+                    executable = (
+                        element.get("id") == definition
+                        and element.get("isExecutable", "").lower() == "true"
+                    )
+                elif executable and element_type == "sequenceFlow":
+                    sequence_flows.append(element)
+                elif executable and (
+                    element_type.endswith(("Event", "Gateway", "Task"))
+                    or element_type in {"callActivity", "subProcess", "transaction"}
+                ):
+                    element_id = element.get("id")
+                    if element_id:
+                        executable_nodes[element_id] = element
+
+                for child in element:
+                    collect_elements(child, executable)
+
+            collect_elements(root)
+            executable_paths: set[str] = set()
+            for element in sequence_flows:
+                element_id = element.get("id")
+                if element_id and element.get("sourceRef") in executable_nodes:
+                    executable_paths.add(element_id)
+
+            def format_elements(element_ids: set[str]) -> str:
+                formatted = []
+                for element_id in sorted(element_ids):
+                    element = executable_nodes.get(element_id)
+                    name = element.get("name") if element is not None else None
+                    formatted.append(f"{element_id} ({name})" if name else element_id)
+                return ", ".join(formatted) if formatted else "none"
+
+            lines.append(
+                f"{definition} nodes: "
+                f"{format_elements(set(executable_nodes) - covered_nodes)}"
+            )
+            lines.append(
+                f"{definition} paths: "
+                f"{format_elements(executable_paths - covered_paths)}"
+            )
+
+        if not selected_models:
+            lines.append("none")
+
+        message = "\n".join(lines)
+        logger.info(message)
+        print(message)
+        if console:
+            print("*CONSOLE*\n" + message)
