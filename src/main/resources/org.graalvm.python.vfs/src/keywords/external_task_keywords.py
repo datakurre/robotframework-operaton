@@ -6,7 +6,6 @@ from keywords.base import (
     VariableValue,
     except_interop_exception,
     java,
-    unwrap_boundary_value,
 )
 
 
@@ -17,13 +16,6 @@ if TYPE_CHECKING:
 class ExternalTaskKeywords:
     def __init__(self, ctx: "Operaton") -> None:
         self.ctx = ctx
-
-    def _is_java_typed_value(self, value: object) -> bool:
-        JavaTypedValue = java.type("org.operaton.bpm.engine.variable.value.TypedValue")
-        try:
-            return isinstance(value, cast(type[object], JavaTypedValue))
-        except TypeError:
-            return bool(JavaTypedValue.isInstance(value))
 
     def _fetch_matching_task(
         self, topic: str, instance_id: str, worker_id: str
@@ -44,32 +36,6 @@ class ExternalTaskKeywords:
         raise AssertionError(
             f"No external task found for topic '{topic}' in process instance {instance_id}"
         )
-
-    def _build_variable_map(
-        self,
-        variables: dict[str, VariableValue],
-        date_variables: object,
-        date_pattern: str,
-    ) -> object:
-        date_names = self.ctx._date_variable_names(date_variables)
-        sdf = java.type("java.text.SimpleDateFormat")(date_pattern)
-        missing_dates = date_names.difference(variables.keys())
-        assert not missing_dates, (
-            "Date variables were requested but not provided: "
-            f"{sorted(missing_dates)}"
-        )
-
-        var_map = Variables.createVariables()
-        for var_name, value in variables.items():
-            value = unwrap_boundary_value(value)
-            if var_name in date_names and not self.ctx._is_java_date(value):
-                value = sdf.parse(str(value))
-            value = cast(VariableValue, self.ctx._to_process_variable_value(value))
-            if self._is_java_typed_value(value):
-                var_map.putValueTyped(var_name, value)
-            else:
-                var_map.putValue(var_name, value)
-        return var_map
 
     def _create_file_value(
         self,
@@ -132,16 +98,7 @@ class ExternalTaskKeywords:
         assert self.ctx.engine, "No engine"
         external_task_service = self.ctx.engine.getExternalTaskService()
         if variables:
-            var_map = Variables.createVariables()
-            for name, value in variables.items():
-                value = unwrap_boundary_value(value)
-                converted_value = cast(
-                    VariableValue, self.ctx._to_process_variable_value(value)
-                )
-                if self._is_java_typed_value(converted_value):
-                    var_map.putValueTyped(name, converted_value)
-                else:
-                    var_map.putValue(name, converted_value)
+            var_map = self.ctx._build_variable_map(variables)
             external_task_service.complete(external_task_id, worker_id, var_map)
         else:
             external_task_service.complete(external_task_id, worker_id)
@@ -169,8 +126,8 @@ class ExternalTaskKeywords:
         external_task_service = self.ctx.engine.getExternalTaskService()
 
         if variables:
-            var_map = self._build_variable_map(
-                dict(variables), date_variables, date_pattern
+            var_map = self.ctx._build_variable_map(
+                variables, date_variables, date_pattern
             )
             external_task_service.complete(
                 getattr(matching_task, "getId")(), worker_id, var_map

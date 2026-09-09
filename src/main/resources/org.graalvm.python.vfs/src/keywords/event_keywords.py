@@ -1,7 +1,7 @@
 from robot.api.deco import keyword
 from typing import TYPE_CHECKING
 
-from keywords.base import Variables, VariableValue, except_interop_exception
+from keywords.base import VariableValue, except_interop_exception
 
 
 if TYPE_CHECKING:
@@ -32,9 +32,7 @@ class EventKeywords:
         if effective_id:
             builder = builder.processInstanceId(effective_id)
         if variables:
-            var_map = Variables.createVariables()
-            for name, value in variables.items():
-                var_map.putValue(name, value)
+            var_map = self.ctx._build_variable_map(variables)
             builder = builder.setVariables(var_map)
         builder.correlate()
 

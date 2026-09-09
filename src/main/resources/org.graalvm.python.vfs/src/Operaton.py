@@ -15,6 +15,7 @@ from keywords.base import (
     java,
     Variables,
     except_interop_exception,
+    unwrap_boundary_value,
     with_authenticated_user,
 )
 from keywords.process_assertions import ProcessAssertions
@@ -454,6 +455,37 @@ class Operaton(DynamicCore):
         # primitive values are returned unchanged
         return value
 
+    def _build_variable_map(
+        self,
+        variables: dict[str, VariableValue],
+        date_variables: object = "",
+        date_pattern: str = "yyyy-MM-dd",
+        list_variables: object = "",
+    ) -> InteropObject:
+        date_names = self._date_variable_names(date_variables)
+        list_names = self._list_variable_names(list_variables)
+        special_names = date_names.union(list_names)
+        missing_variables = special_names.difference(variables.keys())
+        assert not missing_variables, (
+            "Special variables were requested but not provided: "
+            f"{sorted(missing_variables)}"
+        )
+
+        sdf = java.type("java.text.SimpleDateFormat")(date_pattern)
+        var_map = Variables.createVariables()
+        for name, value in variables.items():
+            value = unwrap_boundary_value(value)
+            if name in date_names and not self._is_java_date(value):
+                value = sdf.parse(str(value))
+            if name in list_names:
+                value = self._to_java_list(value)
+            value = self._to_process_variable_value(value)
+            if self._is_java_typed_value(value):
+                var_map.putValueTyped(name, value)
+            else:
+                var_map.putValue(name, value)
+        return cast(InteropObject, var_map)
+
     def _is_java_date(self, value: object) -> bool:
         JavaDate = java.type("java.util.Date")
         try:
@@ -524,35 +556,6 @@ class Operaton(DynamicCore):
         self._current_instance_id = instance_id
         self._current_business_key = business_key
         return self._current_instance_id
-
-    def _build_instance_variable_map(
-        self,
-        variables: dict[str, VariableValue],
-        date_variables: object = "",
-        date_pattern: str = "dd.MM.yyyy",
-        list_variables: object = "",
-    ) -> InteropObject:
-        date_names = self._date_variable_names(date_variables)
-        list_names = self._list_variable_names(list_variables)
-        missing_variables = date_names.union(list_names).difference(variables.keys())
-        assert not missing_variables, (
-            "Special variables were requested but not provided: "
-            f"{sorted(missing_variables)}"
-        )
-
-        sdf = java.type("java.text.SimpleDateFormat")(date_pattern)
-        var_map = Variables.createVariables()
-        for name, value in variables.items():
-            if name in date_names and not self._is_java_date(value):
-                value = sdf.parse(str(value))
-            if name in list_names:
-                value = self._to_java_list(value)
-            converted_value = self._to_process_variable_value(value)
-            if self._is_java_typed_value(converted_value):
-                var_map.putValueTyped(name, converted_value)
-            else:
-                var_map.putValue(name, converted_value)
-        return var_map
 
     @keyword
     @except_interop_exception
@@ -744,9 +747,7 @@ class Operaton(DynamicCore):
         task = query.singleResult()
         assert task, f"No task found for instance {instance_id}"
         if variables:
-            var_map = Variables.createVariables()
-            for var_name, value in variables.items():
-                var_map.putValue(var_name, value)
+            var_map = self._build_variable_map(variables)
             task_service.complete(task.getId(), var_map)
         else:
             task_service.complete(task.getId())
@@ -890,9 +891,7 @@ class Operaton(DynamicCore):
         business_key = self._resolve_business_key(business_key)
         runtime = self.engine.getRuntimeService()
         if variables:
-            var_map = Variables.createVariables()
-            for name, value in variables.items():
-                var_map.putValue(name, value)
+            var_map = self._build_variable_map(variables)
             instance = runtime.startProcessInstanceByKey(
                 process_definition_key, business_key, var_map
             )
@@ -932,7 +931,7 @@ class Operaton(DynamicCore):
         ).businessKey(business_key)
         if variables:
             builder = builder.setVariables(
-                self._build_instance_variable_map(
+                self._build_variable_map(
                     variables,
                     date_variables=date_variables,
                     date_pattern=date_pattern,
