@@ -2,7 +2,10 @@
 .devenv/
 .idea/
 .pre-commit-config.yaml
-.vscode/
+.vscode/*
+!.vscode/launch.json
+!.vscode/settings.json
+!.vscode/tasks.json
 .operaton-scripts/
 /result
 __pycache__/

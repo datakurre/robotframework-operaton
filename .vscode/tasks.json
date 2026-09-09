@@ -1,0 +1,73 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Compile Robot debug classpath",
+      "type": "process",
+      "command": "devenv",
+      "dependsOn": "Prepare Maven debug environment",
+      "dependsOrder": "sequence",
+      "args": ["shell", "--no-eval-cache", "--", "make", "compile"],
+      "options": {
+        "env": {
+          "MAVEN_OPTS": "-Djansi.tmpdir=${workspaceFolder}/target/jansi-tmp"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Start Robot suite for debugger",
+      "type": "process",
+      "command": "devenv",
+      "dependsOn": "Compile Robot debug classpath",
+      "dependsOrder": "sequence",
+      "args": [
+        "shell",
+        "--no-eval-cache",
+        "--",
+        "mvn",
+        "exec:exec",
+        "-Dexec.executable=java",
+        "-Dexec.classpathScope=test",
+        "-Dexec.args=-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:5005 -cp %classpath org.operaton.bpm.extension.robot.Robot --loglevel DEBUG --console verbose ${input:robotSuite}"
+      ],
+      "options": {
+        "env": {
+          "MAVEN_OPTS": "-Djansi.tmpdir=${workspaceFolder}/target/jansi-tmp"
+        }
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "robot-debug",
+        "pattern": {
+          "regexp": ".*"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*Listening for transport dt_socket at address: 5005.*",
+          "endsPattern": ".*Listening for transport dt_socket at address: 5005.*"
+        }
+      }
+    },
+    {
+      "label": "Prepare Maven debug environment",
+      "type": "shell",
+      "command": "mkdir -p \"${workspaceFolder}/target/jansi-tmp\"",
+      "options": {
+        "shell": {
+          "executable": "/bin/bash",
+          "args": ["-c"]
+        }
+      },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "robotSuite",
+      "description": "Robot Framework suite to debug",
+      "type": "promptString",
+      "default": "src/test/resources/example/Example.robot"
+    }
+  ]
+}

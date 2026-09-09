@@ -155,6 +155,41 @@ If VS Code shows `loading` before hover/completion data appears, that is the
 expected symptom of RobotCode importing the `Operaton` library through the
 proxy/backend path.
 
+### Debug a complete suite with Java breakpoints
+
+The repository includes a `Debug Robot suite` launch configuration in
+`.vscode/launch.json`. Install the VS Code **Extension Pack for Java**, then:
+
+1. Open **Run and Debug** and select **Debug Robot suite**.
+2. Start the configuration and enter a suite path, for example
+   `src/test/resources/example/Example.robot`.
+3. Set breakpoints in Java sources such as `Robot.java` or other Java classes
+   called by the Robot library, then use the normal VS Code debugger.
+
+Open the repository root (the directory containing `pom.xml`) as the VS Code
+workspace. The shared `.vscode/settings.json` enables Maven project import and
+dependency source downloads, which are required for **Go to Definition** and
+`Ctrl+T` to resolve dependency classes. If the project was already open, run
+**Java: Clean Java Language Server Workspace**, choose **Restart and delete**,
+and reload VS Code. The workspace uses the Java language server's Standard
+mode so all Maven dependencies are indexed.
+
+To step into Maven dependencies, download their source archives first:
+
+```sh
+devenv shell --no-eval-cache -- make dependency-sources
+```
+
+The launch configuration compiles the project with `devenv`, starts
+`org.operaton.bpm.extension.robot.Robot` suspended on a local JDWP port, and
+attaches the VS Code Java debugger. This avoids requiring VS Code's Java
+language server to recognize the Maven project as a Java project. It is
+separate from RobotCode's gutter **Run Test**, which uses the CPython proxy
+and is intended for normal Robot-level test execution.
+
+The debug launch passes `--loglevel DEBUG --console verbose`, so Robot
+keyword logging and Java-side debug logging are shown in the terminal.
+
 ### Faster iteration (persistent Remote server)
 
 By default the CPython proxy spawns a fresh JVM for every test run (~20–30 s).
