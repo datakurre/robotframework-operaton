@@ -473,8 +473,8 @@ class Operaton(DynamicCore):
 
         sdf = java.type("java.text.SimpleDateFormat")(date_pattern)
         var_map = Variables.createVariables()
-        for name, value in variables.items():
-            value = unwrap_boundary_value(value)
+        for name, input_value in variables.items():
+            value = unwrap_boundary_value(input_value)
             if name in date_names and not self._is_java_date(value):
                 value = sdf.parse(str(value))
             if name in list_names:
@@ -484,7 +484,7 @@ class Operaton(DynamicCore):
                 var_map.putValueTyped(name, value)
             else:
                 var_map.putValue(name, value)
-        return cast(InteropObject, var_map)
+        return var_map
 
     def _is_java_date(self, value: object) -> bool:
         JavaDate = java.type("java.util.Date")

@@ -1,5 +1,5 @@
 from functools import wraps
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from typing import Callable, ParamSpec, Protocol, TypeVar, cast
 
 import base64
@@ -84,15 +84,18 @@ class BoundaryValue(str):
     _PREFIX = "__operaton_boundary__:"
 
     def __new__(cls, kind: str, value: InteropObject) -> "BoundaryValue":
+        payload: dict[str, object]
         if kind == "date":
             payload = {"millis": int(value.getTime())}
         elif kind == "file":
+            raw_content = value.getValue().readAllBytes()
+            content = bytes(
+                int(item) & 0xFF for item in cast(Iterable[InteropObject], raw_content)
+            )
             payload = {
                 "filename": str(value.getFilename()),
                 "mime_type": str(value.getMimeType()),
-                "content": base64.b64encode(
-                    bytes(value.getValue().readAllBytes())
-                ).decode("ascii"),
+                "content": base64.b64encode(content).decode("ascii"),
             }
         else:
             payload = {"type": type(value).__name__}
@@ -138,12 +141,11 @@ def unwrap_boundary_value(value: object) -> object:
             return java.type("java.util.Date")(int(payload["millis"]))
         if kind == "file":
             content = base64.b64decode(str(payload["content"]))
-            return cast(
-                InteropObject,
+            return (
                 Variables.fileValue(str(payload["filename"]))
                 .file(content)
                 .mimeType(str(payload["mime_type"]))
-                .create(),
+                .create()
             )
         raise TypeError(f"Unsupported Java value crossing Robot boundary: {payload}")
     if isinstance(value, list):
@@ -220,9 +222,10 @@ def except_interop_exception(func: Callable[P, R]) -> Callable[P, R]:
             unwrapped_kwargs = {
                 key: unwrap_boundary_value(value) for key, value in kwargs.items()
             }
+            callable_func = cast(Callable[..., R], func)
             return cast(
                 R,
-                wrap_boundary_value(func(*unwrapped_args, **unwrapped_kwargs)),
+                wrap_boundary_value(callable_func(*unwrapped_args, **unwrapped_kwargs)),
             )
         except BaseException as exc:
             message = _interop_message(exc)
