@@ -59,6 +59,28 @@ class _RobotLogger(Protocol):
 
 
 class BoundaryValue(str):
+    """Serializable representation for Java values crossing a Robot boundary.
+
+    Robot Framework variables do not reliably preserve arbitrary GraalPy foreign
+    Java objects between keyword calls.  For example, a Java ``FileValue`` can
+    arrive at the next keyword as the result of ``FileValueImpl.toString()``
+    rather than as a typed ``FileValue``.  The receiving keyword then takes the
+    untyped ``putValue`` path and Operaton cannot treat the text as a file.
+
+    This class is intentionally a ``str`` subclass.  Robot scalar variables can
+    preserve strings, and the same representation can cross the XML-RPC Remote
+    protocol used by RobotCode and the CPython proxy.  Arbitrary Java objects
+    cannot be assumed to be XML-RPC serializable, so supported values are
+    encoded as a tagged string containing only JSON-compatible metadata and,
+    for files, Base64-encoded bytes.
+
+    ``wrap_boundary_value`` creates this representation when a keyword returns
+    a supported Java value.  ``unwrap_boundary_value`` recognizes the tag at
+    the next keyword boundary and reconstructs a new Java value before the
+    keyword calls Operaton.  The explicit tag prevents ordinary user strings
+    from being interpreted as boundary values accidentally.
+    """
+
     _PREFIX = "__operaton_boundary__:"
 
     def __new__(cls, kind: str, value: InteropObject) -> "BoundaryValue":
