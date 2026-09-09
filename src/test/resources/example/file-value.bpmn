@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.20.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.20.0">
+  <bpmn:process id="Process_1" isExecutable="true" camunda:historyTimeToLive="180">
+    <bpmn:startEvent id="StartEvent_1">
+      <bpmn:outgoing>Flow_0xrkc8u</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:endEvent id="Event_1bh8g93">
+      <bpmn:incoming>Flow_1wb6nwn</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_0xrkc8u" sourceRef="StartEvent_1" targetRef="Activity_0b3gfec" />
+    <bpmn:sequenceFlow id="Flow_1gvbtm5" sourceRef="Activity_0b3gfec" targetRef="Activity_15lrlj3" />
+    <bpmn:sequenceFlow id="Flow_1he2t9q" sourceRef="Activity_15lrlj3" targetRef="Activity_050jd1h" />
+    <bpmn:sequenceFlow id="Flow_1wb6nwn" sourceRef="Activity_050jd1h" targetRef="Event_1bh8g93" />
+    <bpmn:scriptTask id="Activity_050jd1h" name="Nimeä tiedosto" scriptFormat="JavaScript">
+      <bpmn:incoming>Flow_1he2t9q</bpmn:incoming>
+      <bpmn:outgoing>Flow_1wb6nwn</bpmn:outgoing>
+      <bpmn:script>var nimeamispaatos_tiedosto_nimi = "Nimeämispäätös; ".concat(nimeamispyynto_nimi).concat(".pdf");
+
+var old = execution.getVariableTyped("pdf_generoitu");
+
+org.camunda.bpm.engine.variable.Variables.fileValue(nimeamispaatos_tiedosto_nimi).file(old.getValue()).mimeType(old.getMimeType()).create()</bpmn:script>
+    </bpmn:scriptTask>
+    <bpmn:serviceTask id="Activity_15lrlj3" camunda:type="external" camunda:topic="pdf.pdfa.convert">
+      <bpmn:extensionElements>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="input">${execution.getVariableTyped("filled_pdf")}</camunda:inputParameter>
+          <camunda:outputParameter name="pdf_generoitu">${execution.getVariableTyped("output")}</camunda:outputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1gvbtm5</bpmn:incoming>
+      <bpmn:outgoing>Flow_1he2t9q</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Activity_0b3gfec" camunda:type="external" camunda:topic="pdf.form.fill">
+      <bpmn:extensionElements>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="template">nimeamista_ei_tehda.pdf</camunda:inputParameter>
+          <camunda:outputParameter name="filled_pdf">${execution.getVariableTyped("output")}</camunda:outputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_0xrkc8u</bpmn:incoming>
+      <bpmn:outgoing>Flow_1gvbtm5</bpmn:outgoing>
+    </bpmn:serviceTask>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_1">
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="StartEvent_1">
+        <dc:Bounds x="179" y="159" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1bh8g93_di" bpmnElement="Event_1bh8g93">
+        <dc:Bounds x="742" y="159" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_026k2t7_di" bpmnElement="Activity_050jd1h">
+        <dc:Bounds x="600" y="137" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0kc2ekz_di" bpmnElement="Activity_15lrlj3">
+        <dc:Bounds x="440" y="137" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1galtp4_di" bpmnElement="Activity_0b3gfec">
+        <dc:Bounds x="270" y="137" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_0xrkc8u_di" bpmnElement="Flow_0xrkc8u">
+        <di:waypoint x="215" y="177" />
+        <di:waypoint x="270" y="177" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1gvbtm5_di" bpmnElement="Flow_1gvbtm5">
+        <di:waypoint x="370" y="177" />
+        <di:waypoint x="440" y="177" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1he2t9q_di" bpmnElement="Flow_1he2t9q">
+        <di:waypoint x="540" y="177" />
+        <di:waypoint x="600" y="177" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1wb6nwn_di" bpmnElement="Flow_1wb6nwn">
+        <di:waypoint x="700" y="177" />
+        <di:waypoint x="742" y="177" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

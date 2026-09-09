@@ -5,7 +5,6 @@ import json
 
 from keywords.base import (
     DmnValue,
-    Variables,
     VariableValue,
     java,
     except_interop_exception,
@@ -43,9 +42,7 @@ class DmnKeywords:
         decision_service = self.ctx.engine.getDecisionService()
         builder = decision_service.evaluateDecisionByKey(decision_key)
         if variables:
-            var_map = Variables.createVariables()
-            for name, value in variables.items():
-                var_map.putValue(name, value)
+            var_map = self.ctx._build_variable_map(variables)
             builder = builder.variables(var_map)
         dmn_result = builder.evaluate()
         result: DecisionResult = []
@@ -78,9 +75,7 @@ class DmnKeywords:
         decision_service = self.ctx.engine.getDecisionService()
         builder = decision_service.evaluateDecisionTableByKey(decision_key)
         if variables:
-            var_map = Variables.createVariables()
-            for name, value in variables.items():
-                var_map.putValue(name, value)
+            var_map = self.ctx._build_variable_map(variables)
             builder = builder.variables(var_map)
         dmn_result = builder.evaluate()
         result: DecisionResult = []

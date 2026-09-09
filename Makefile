@@ -88,6 +88,10 @@ dist-libspec: coverage-lib  ## Published library spec artifact → $(DOCS_DIR)/O
 clean:  ## mvn clean
 	mvn clean
 
+.PHONY: dependency-sources
+dependency-sources:  ## Download Maven dependency source archives for debugging
+	mvn dependency:sources
+
 # ─── Coverage library (git submodule) ────────────────────────────────────────
 # Builds operaton-process-test-coverage-core and -engine-platform-7 from the
 # submodule and installs them into the local Maven repo. Other targets depend on

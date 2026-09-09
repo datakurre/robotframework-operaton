@@ -1,7 +1,12 @@
 from robot.api.deco import keyword
 from typing import TYPE_CHECKING, cast
 
-from keywords.base import Variables, VariableValue, java, except_interop_exception
+from keywords.base import (
+    Variables,
+    VariableValue,
+    except_interop_exception,
+    java,
+)
 
 
 if TYPE_CHECKING:
@@ -11,6 +16,39 @@ if TYPE_CHECKING:
 class ExternalTaskKeywords:
     def __init__(self, ctx: "Operaton") -> None:
         self.ctx = ctx
+
+    def _fetch_matching_task(
+        self, topic: str, instance_id: str, worker_id: str
+    ) -> object:
+        assert self.ctx.engine, "No engine"
+        external_task_service = self.ctx.engine.getExternalTaskService()
+        tasks = (
+            external_task_service.fetchAndLock(10, worker_id)
+            .topic(topic, 1000)
+            .execute()
+        )
+
+        for i in range(int(tasks.size())):
+            task = tasks.get(i)
+            if str(task.getProcessInstanceId()) == str(instance_id):
+                return cast(object, task)
+
+        raise AssertionError(
+            f"No external task found for topic '{topic}' in process instance {instance_id}"
+        )
+
+    def _create_file_value(
+        self,
+        default_filename: str,
+        default_mime_type: str,
+    ) -> VariableValue:
+        return cast(
+            VariableValue,
+            Variables.fileValue(default_filename)
+            .file(b"")
+            .mimeType(default_mime_type)
+            .create(),
+        )
 
     @keyword
     @except_interop_exception
@@ -60,9 +98,7 @@ class ExternalTaskKeywords:
         assert self.ctx.engine, "No engine"
         external_task_service = self.ctx.engine.getExternalTaskService()
         if variables:
-            var_map = Variables.createVariables()
-            for name, value in variables.items():
-                var_map.putValue(name, value)
+            var_map = self.ctx._build_variable_map(variables)
             external_task_service.complete(external_task_id, worker_id, var_map)
         else:
             external_task_service.complete(external_task_id, worker_id)
@@ -86,41 +122,35 @@ class ExternalTaskKeywords:
             instance_id
         ), "No process instance id provided and no current instance in scope"
 
+        matching_task = self._fetch_matching_task(topic, instance_id, worker_id)
         external_task_service = self.ctx.engine.getExternalTaskService()
-        tasks = (
-            external_task_service.fetchAndLock(10, worker_id)
-            .topic(topic, 1000)
-            .execute()
-        )
-
-        matching_task = None
-        for i in range(int(tasks.size())):
-            task = tasks.get(i)
-            if str(task.getProcessInstanceId()) == str(instance_id):
-                matching_task = task
-                break
-
-        assert (
-            matching_task
-        ), f"No external task found for topic '{topic}' in process instance {instance_id}"
 
         if variables:
-            date_names = self.ctx._date_variable_names(date_variables)
-            sdf = java.type("java.text.SimpleDateFormat")(date_pattern)
-            missing_dates = date_names.difference(variables.keys())
-            assert not missing_dates, (
-                "Date variables were requested but not provided: "
-                f"{sorted(missing_dates)}"
+            var_map = self.ctx._build_variable_map(
+                variables, date_variables, date_pattern
             )
-            var_map = Variables.createVariables()
-            for var_name, value in variables.items():
-                if var_name in date_names and not self.ctx._is_java_date(value):
-                    value = sdf.parse(str(value))
-                value = cast(VariableValue, self.ctx._to_process_variable_value(value))
-                var_map.putValue(var_name, value)
-            external_task_service.complete(matching_task.getId(), worker_id, var_map)
+            external_task_service.complete(
+                getattr(matching_task, "getId")(), worker_id, var_map
+            )
         else:
-            external_task_service.complete(matching_task.getId(), worker_id)
+            external_task_service.complete(getattr(matching_task, "getId")(), worker_id)
+
+    @keyword
+    @except_interop_exception
+    def create_operaton_file_variable(
+        self,
+        default_filename: str,
+        default_mime_type: str,
+    ) -> VariableValue:
+        """Creates a typed file value for external-task output.
+
+        The returned value can be passed to ``Complete External Task For Topic``
+        as a named output variable.
+        """
+        return self._create_file_value(
+            default_filename=default_filename,
+            default_mime_type=default_mime_type,
+        )
 
     @keyword
     @except_interop_exception

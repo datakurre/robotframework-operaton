@@ -3,7 +3,6 @@ from typing import TYPE_CHECKING
 
 from keywords.base import (
     ScalarValue,
-    Variables,
     VariableValue,
     except_interop_exception,
     with_authenticated_user,
@@ -50,9 +49,7 @@ class FormKeywords:
             query = query.taskDefinitionKey(resolved_key)
         task = query.singleResult()
         assert task, f"No task found for instance {instance_id}"
-        var_map = Variables.createVariables()
-        for name, value in form_variables.items():
-            var_map.putValue(name, value)
+        var_map = self.ctx._build_variable_map(form_variables)
         form_service.submitTaskForm(task.getId(), var_map)
 
     @keyword
