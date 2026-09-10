@@ -92,7 +92,11 @@ public class RobotRemote {
                     def _patched_handle_return_value(self, ret):
                         if ret is None:
                             return None
-                        if isinstance(ret, (str, bytes)):
+                        if isinstance(ret, str):
+                            # BoundaryValue is a str subclass; XML-RPC only marshals
+                            # the exact built-in str type reliably.
+                            return ret.encode("utf-8").decode("utf-8")
+                        if isinstance(ret, bytes):
                             return self._handle_binary_result(ret)
                         if isinstance(ret, (int, float)):
                             return ret
