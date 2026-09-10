@@ -11,6 +11,7 @@
 paths = ["src/test/resources/example"]
 
 [env]
+ROBOT_OPTIONS="--loglevel DEBUG"
 OPERATON_JAR = "target/operaton-bpm-extension-robot-1.0-SNAPSHOT-fat.jar"
 # Path to the fat JAR used by the CPython proxy when it auto-starts the backend.
 # GraalPy JVM startup takes ~20-30s; raise RobotCode's library-load timeout accordingly.
