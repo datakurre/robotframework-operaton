@@ -1,5 +1,4 @@
 import json
-import xml.etree.ElementTree as ET
 
 from robot.api import logger
 from robot.api.deco import keyword
@@ -357,42 +356,23 @@ class BpmnKeywords:
                 for event in suite.getEvents(definition)
                 if str(event.getSource()) == "SEQUENCE_FLOW"
             }
-            root = ET.fromstring(str(model.getXml()))
-            executable_nodes: dict[str, ET.Element] = {}
-            sequence_flows: list[ET.Element] = []
-
-            def collect_elements(element: ET.Element, executable: bool = False) -> None:
-                element_type = element.tag.rsplit("}", 1)[-1]
-                if element_type == "process":
-                    executable = (
-                        element.get("id") == definition
-                        and element.get("isExecutable", "").lower() == "true"
-                    )
-                elif executable and element_type == "sequenceFlow":
-                    sequence_flows.append(element)
-                elif executable and (
-                    element_type.endswith(("Event", "Gateway", "Task"))
-                    or element_type in {"callActivity", "subProcess", "transaction"}
-                ):
-                    element_id = element.get("id")
-                    if element_id:
-                        executable_nodes[element_id] = element
-
-                for child in element:
-                    collect_elements(child, executable)
-
-            collect_elements(root)
-            executable_paths: set[str] = set()
-            for element in sequence_flows:
-                element_id = element.get("id")
-                if element_id and element.get("sourceRef") in executable_nodes:
-                    executable_paths.add(element_id)
+            BpmnModelParser = java.type(
+                "org.operaton.bpm.extension.robot.BpmnModelParser"
+            )
+            elements = BpmnModelParser.parse(str(model.getXml()), definition)
+            nodes_map = elements.getNodes()
+            executable_nodes: dict[str, str | None] = {
+                str(k): (
+                    str(nodes_map.get(k)) if nodes_map.get(k) is not None else None
+                )
+                for k in nodes_map.keySet()
+            }
+            executable_paths: set[str] = {str(path) for path in elements.getPaths()}
 
             def format_elements(element_ids: set[str]) -> str:
                 formatted = []
                 for element_id in sorted(element_ids):
-                    element = executable_nodes.get(element_id)
-                    name = element.get("name") if element is not None else None
+                    name = executable_nodes.get(element_id)
                     formatted.append(f"{element_id} ({name})" if name else element_id)
                 return ", ".join(formatted) if formatted else "none"
 
