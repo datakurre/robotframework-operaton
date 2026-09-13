@@ -137,7 +137,7 @@ class ExternalTaskKeywords:
 
     @keyword
     @except_interop_exception
-    def create_operaton_file_variable(
+    def create_file_variable(
         self,
         default_filename: str,
         default_mime_type: str,

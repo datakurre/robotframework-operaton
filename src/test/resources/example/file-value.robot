@@ -11,15 +11,16 @@ Test Pdf File Value
 
     Set Process Variable    nimeamispyynto_nimi    testi
 
-    ${file}=    Create Operaton File Variable
+    ${file}=    Create File Variable
     ...    default_filename=nimeamispyynto.pdf
     ...    default_mime_type=application/pdf
     Execute Jobs Until Wait State    wait_for=external_task    topic=pdf.form.fill
     Complete External Task For Topic    topic=pdf.form.fill    output=${file}
 
-    ${file}=    Create Operaton File Variable
+    ${file}=    Create File Variable
     ...    default_filename=nimeamispyynto.pdf
     ...    default_mime_type=application/pdf
     Complete External Task For Topic    topic=pdf.pdfa.convert    output=${file}
 
     Should Be Ended
+    [Teardown]    Teardown Process Engine

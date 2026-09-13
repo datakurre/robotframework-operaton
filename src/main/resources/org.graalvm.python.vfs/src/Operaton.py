@@ -185,7 +185,7 @@ class Operaton(DynamicCore):
     | Process state        | Should Be Active, Should Be Ended, Should Be Suspended, Suspend Instance, Activate Instance, Stop Instance, Should Have Active, Should Have Completed |
     | History              | Get Activity History, Get Historic Variables, Get Completed Instances, Get Process Definition Id, Get Process Model Xml |
     | Events               | Correlate Message, Send Message, Signal Event, Throw Signal, Should Have Incident |
-    | External tasks       | Fetch And Lock, Complete External Task, Throw Bpmn Error          |
+    | External tasks       | Fetch And Lock, Complete External Task, Complete External Task For Topic, Throw Bpmn Error, Create File Variable |
     | DMN decisions        | Evaluate Decision, Evaluate Decision Table, Decision Single Result, Decision Single Entry, Decision Result Should Contain, Collect Entries, Should Have Decision Definition |
     | Forms                | Submit Task Form, Get Task Form Variables                         |
     | Typed variables      | Create Integer Variable, Create Double Variable, Create Boolean Variable, Create Date Variable |
